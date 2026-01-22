@@ -152,7 +152,7 @@ def build_cube(rows, Zs, scan_folder, start_nm, end_nm):
 
             # Store the full image for this (Z, X) position
             #Flip the image horizontally
-            img = np.fliplr(img)   
+            #img = np.fliplr(img)   
             cube_nm[zi, xi, :, :] = img.astype(np.float32)
 
     print("Built cube_nm with shape (Z, X, Y, wavelength):", cube_nm.shape)
@@ -226,7 +226,7 @@ if __name__ == "__main__":
     # ---- Finding the latest modified scan folder ----
     scan_folder = find_last_modified_folder()
     #To choose a specific scan folder use this: 
-    #scan_folder = "/Users/hannahalse/KFSpectra/edge/data/scan_16November_13:58:13"
+    #scan_folder = "/Users/hannahalse/KFSpectra/edge/data/scan_30October_15:21:15"
     print("Using this scan folder:", scan_folder)
     
     # ---- Building the cube from scan ----

@@ -1,3 +1,12 @@
-#ignore
-data/*
+# --- Python ---
 *.pyc
+__pycache__/
+
+# --- macOS ---
+.DS_Store
+
+# --- Generated scan / experiment data ---
+edge/data/
+
+# --- Debug / temporary output ---
+server/debug_pictures/

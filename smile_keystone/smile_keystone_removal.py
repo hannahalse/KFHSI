@@ -180,7 +180,7 @@ def quantify_smile_from_raw(
         plt.axhline(0, color="k", linewidth=0.5)
         plt.xlabel("Row (y)")
         plt.ylabel("Smile [pixels]")
-        plt.title(f"Smile for line {first_key} (x≈{r0['line_x0']})")
+        plt.title(f"Smile for line {first_key}")
         plt.tight_layout()
         plt.show()
 
@@ -192,7 +192,7 @@ def quantify_smile_from_raw(
         plt.axhline(0, color="k", linewidth=0.5)
         plt.xlabel("Row (y)")
         plt.ylabel("Smile [pixels]")
-        plt.title(f"Smile for line {nineteenth_key} (x≈{r0['line_x0']})")
+        plt.title(f"Smile for line {nineteenth_key}")
         plt.tight_layout()
         plt.show()
 
@@ -201,7 +201,7 @@ def quantify_smile_from_raw(
     return results
 
 
-def locate_peaks(spec, noise_level = 30, min_distance_pixels = 5):
+def locate_peaks(spec, noise_level = 20, min_distance_pixels = 2):
     """
     Locate peaks in a spectrum above a certain noise level and minimum distance.
 
@@ -231,7 +231,7 @@ def locate_peaks(spec, noise_level = 30, min_distance_pixels = 5):
 
 wavs, spec = extract_spectrum_from_row(
     raw_path="/Users/hannahalse/KFSpectra/smile_keystone/calibration_data/hg_200ms.png",
-    row=400,
+    row=608,
     start_nm=400.0,
     end_nm=800.0,
     show_plot=True
@@ -251,8 +251,8 @@ results = quantify_smile_from_raw(
     raw_path="/Users/hannahalse/KFSpectra/smile_keystone/calibration_data/hg_200ms.png",
     peak_thresh_rel=0.3,
     window_half_width=5,
-    y_roi=(248, 803),        # eller f.eks. (100, 500) hvis du vil klippe bort topp/bunn
-    nm_per_pixel=None, # ev. 0.2 hvis du kjenner dispersjonen
+    y_roi=(260, 803),        # eller f.eks. (100, 500) hvis du vil klippe bort topp/bunn
+    nm_per_pixel=None,      
     show_debug=True,
 )
 

@@ -73,13 +73,13 @@ def reconstruct_rgb_image(cube, out_path, y=None, aggregate="mean"):
     """
 
     # Target wavelengths for R, G, B channels
-    #r_wavelength = 620  # Red
-    #g_wavelength = 520  # Green
-    #b_wavelength = 460  # Blue
+    r_wavelength = 620  # Red
+    g_wavelength = 520  # Green
+    b_wavelength = 460  # Blue
     #Flipped spectrums
-    r_wavelength = 586  # Red
-    g_wavelength = 536  # Green
-    b_wavelength = 498  # Blue
+    #r_wavelength = 586  # Red
+    #g_wavelength = 536  # Green
+    #b_wavelength = 498  # Blue
     
     # Find indices for these wavelengths
     r_idx = int(np.searchsorted(cube.wavs_nm, r_wavelength))
