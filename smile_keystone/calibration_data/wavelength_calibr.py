@@ -1,37 +1,35 @@
 #!/usr/bin/env python3
 """
-combined_calibration.py
-
-Single script that replaces your 3 scripts, but now uses:
+This script uses: 
 - INPUTS (originals):  ar_200ms.png, hg_200ms.png
-- Flips originals horizontally (spectral axis) BEFORE any processing (as you requested)
+- Flips originals horizontally (spectral axis) before any processing
 - Preprocess: crop rows [roi_top:roi_bottom], bin along x (binning_factor)
 - Process: integrate spectrum, align Ar->Hg, estimate alpha, subtract alpha*Ar from Hg
 - Detect peaks and plot spectra
 - Fit linear + quadratic calibration using your chosen pixel_points and nm_points
 - Saves outputs WITHOUT overwriting your originals
-
-Run from inside calibration_data/:
-    python combined_calibration.py
 """
-
 import os
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import correlate, find_peaks
 
+#Set to True to save debug images (DO NOT overwrite originals)
+save_debug_images = False 
+
 # Base directory 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Debug folder
 debug_dir = os.path.join(base_dir, "debug_calib")
-os.makedirs(debug_dir, exist_ok=True)
+if save_debug_images:
+    os.makedirs(debug_dir, exist_ok=True)
 
 # -----------------------------
 # CONFIG
 # -----------------------------
-# Originals (these MUST exist in same folder as this script)
+# Originals (these must exist in same folder as this script)
 ar_original_name = "ar_200ms.png"
 hg_original_name = "hg_200ms.png"
 
@@ -41,31 +39,30 @@ flip_original_x = True
 # Preprocess settings
 roi_top = 248
 roi_bottom = 803
-binning_factor = 2  # must match camera config
+binning_factor = 2  # Must match camera config
 
-# Spectrum integration ROI inside the *preprocessed* image
+# Spectrum integration ROI inside the preprocessed image
 y_roi = (0, 555)
 
 # Alignment search window (pixels)
 max_shift = 10
 
-# Peak detection params
+# Peak detection parameters
 min_height_rel = 0.12
 min_distance = 10
 prominence_rel = 0.03
 
-# Peaks (pixels) you selected (from Ar aligned) for calibration
+# Peaks (pixels) selected (from Ar aligned) for calibration
 pixel_points = np.array([564, 579, 608, 625, 643, 661, 731, 754, 777, 883], dtype=float)
 
-# Corresponding known wavelengths (from Maries thesis )(nm)
+# Corresponding known wavelengths (from Maries thesis)(nm)
 nm_points = np.array([696.54, 706.72, 727.29, 738.40, 750.93, 763.51, 810.95, 826.45, 841.64, 912.30], dtype=float)
 
-base_dir = os.path.dirname(os.path.abspath(__file__))
-
 
 # -----------------------------
-# CALIBRATION FUNCTIONS (your fitted functions)
+# CALIBRATION FUNCTIONS (fitted functions)
 # -----------------------------
+#Hvor kommer denne fra egentlig? 
 def pixel_to_nm_linear(pixel):
     return 0.6770375752 * pixel + 315.3658549581
 
@@ -221,7 +218,7 @@ def plot_spectrum_with_peaks(spec: np.ndarray, peaks_idx: np.ndarray, title: str
 
 
 # -----------------------------
-# FIT CALIBRATION (same as your fit_calibration.py)
+# FIT CALIBRATION
 # -----------------------------
 def fit_linear_and_quadratic(pixel: np.ndarray, nm: np.ndarray):
     c1 = np.polyfit(pixel, nm, 1)
@@ -272,7 +269,7 @@ def plot_calibration(pixel: np.ndarray, nm: np.ndarray, coeff2: np.ndarray):
 # MAIN
 # -----------------------------
 def main():
-    # ---- 0) Load ORIGINALS (and flip them) ----
+    # ---- 0) Load ORIGINALS ----
     ar_path = os.path.join(base_dir, ar_original_name)
     hg_path = os.path.join(base_dir, hg_original_name)
 
@@ -283,11 +280,6 @@ def main():
     print(f"  ar: {ar_original_name} shape={ar_orig.shape} flip_x={flip_original_x}")
     print(f"  hg: {hg_original_name} shape={hg_orig.shape} flip_x={flip_original_x}")
     
-    # Save flipped originals for debugging (DO NOT overwrite originals)
-    ar_flip_dbg = os.path.join(debug_dir, "ar_200ms_flipped_debug.png")
-    hg_flip_dbg = os.path.join(debug_dir, "hg_200ms_flipped_debug.png")
-    save_u8(ar_flip_dbg, ar_orig)
-    save_u8(hg_flip_dbg, hg_orig)
 
     # ---- 1) Preprocess (crop y + bin x) ----
     ar_pre = preprocess(ar_orig)
@@ -297,17 +289,6 @@ def main():
     print(f"  ar: {ar_orig.shape} -> {(roi_bottom-roi_top, ar_orig.shape[1])} -> {ar_pre.shape}")
     print(f"  hg: {hg_orig.shape} -> {(roi_bottom-roi_top, hg_orig.shape[1])} -> {hg_pre.shape}")
 
-  
-
-    # Save preprocessed images (DO NOT overwrite originals)
-    ar_pre_name = f"ar_200ms_roi{roi_top}-{roi_bottom}_bin{binning_factor}.png"
-    hg_pre_name = f"hg_200ms_roi{roi_top}-{roi_bottom}_bin{binning_factor}.png"
-    ar_pre_path = os.path.join(debug_dir, ar_pre_name)
-    hg_pre_path = os.path.join(debug_dir, hg_pre_name)
-    save_u8(ar_pre_path, ar_pre)
-    save_u8(hg_pre_path, hg_pre)
-    print(f"Saved preprocessed: {hg_pre_path}, {ar_pre_path}")
-    
     # ---- 2) Spectra + Align + Subtract ----
     # 2.1 Ar spectrum (raw / preprocessed)
     ar_spec = integrated_spectrum(ar_pre, y_roi)
@@ -332,14 +313,22 @@ def main():
     print_peaks("Ar (aligned)", ar_aligned_peaks_idx, ar_aligned_peak_vals)
     plot_spectrum_with_peaks(ar_spec_aligned, ar_aligned_peaks_idx, "Ar (aligned)")
 
-# Save debug outputs (DO NOT overwrite originals)
-    hg_only_dbg_path = os.path.join(debug_dir, "hg_only_u8_debug.png")
-    ar_aligned_dbg_path = os.path.join(debug_dir, "ar_aligned_u8_debug.png")
-    save_u8(hg_only_dbg_path, hg_only_img)
-    save_u8(ar_aligned_dbg_path, ar_img_aligned)
-    print("\nSaved:", hg_only_dbg_path, ar_aligned_dbg_path)
-    print(f"Size of hg_only_img (H,W): {hg_only_img.shape}")
-    print(f"Size of ar_aligned_img (H,W): {ar_img_aligned.shape}")
+
+    if save_debug_images:
+        ar_flip_dbg = os.path.join(debug_dir, "ar_200ms_flipped_debug.png")
+        hg_flip_dbg = os.path.join(debug_dir, "hg_200ms_flipped_debug.png")
+        save_u8(ar_flip_dbg, ar_orig)
+        save_u8(hg_flip_dbg, hg_orig)
+        
+        ar_pre_name = f"ar_200ms_roi{roi_top}-{roi_bottom}_bin{binning_factor}.png"
+        hg_pre_name = f"hg_200ms_roi{roi_top}-{roi_bottom}_bin{binning_factor}.png"
+        save_u8(os.path.join(debug_dir, ar_pre_name), ar_pre)
+        save_u8(os.path.join(debug_dir, hg_pre_name), hg_pre)
+
+        save_u8(os.path.join(debug_dir, "hg_only_u8_debug.png"), hg_only_img)
+        save_u8(os.path.join(debug_dir, "ar_aligned_u8_debug.png"), ar_img_aligned)   
+        print(f"Size of hg_only_img (H,W): {hg_only_img.shape}")
+        print(f"Size of ar_aligned_img (H,W): {ar_img_aligned.shape}") 
 
     # ---- 2.3 Sanity: wavelength axis ----
     # (Only meaningful for widths that exist in your current processed data)
@@ -369,8 +358,9 @@ if __name__ == "__main__":
     #--------- TESTING ----------
     
     # Load test image
-    test_path = os.path.join(base_dir, "5700K30int.png")
+    test_path = os.path.join(base_dir, "660nmLC30int.png")
     image = cv2.imread(test_path, cv2.IMREAD_GRAYSCALE)
+    print(f"Size of test image: {image.shape}")
 
     if image is None:
         raise RuntimeError("Could not load test image")
@@ -379,18 +369,21 @@ if __name__ == "__main__":
     image = np.fliplr(image)
 
     print("Image shape:", image.shape)
-    # Crop rows
-    cropped = image[roi_top:roi_bottom, :]
+    
+    spectrum = image.sum(axis=0)
+    nm_axis = wavelength_axis(image.shape[1])
 
-    # Bin along x
-    binned = bin_image_x(cropped.astype(np.float32), binning_factor)
-    spectrum = binned.sum(axis=0)
-    nm_axis = wavelength_axis(binned.shape[1])
+    # ---- Klipp til 400–800 nm ----
+    mask = (nm_axis >= 400) & (nm_axis <= 800)
+
+    nm_axis_clip = nm_axis[mask]
+    spectrum_clip = spectrum[mask]
+
     plt.figure(figsize=(8,4))
-    plt.plot(nm_axis, spectrum)
+    plt.plot(nm_axis_clip, spectrum_clip)
     plt.xlabel("Wavelength (nm)")
     plt.ylabel("Integrated intensity")
-    plt.title("Test image spectrum with calibrated wavelength axis")
+    plt.title("Test image spectrum with calibrated wavelength axis (400–800 nm)")
     plt.tight_layout()
     plt.show()
     # ---------------------------------
