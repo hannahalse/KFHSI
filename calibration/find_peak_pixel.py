@@ -5,6 +5,12 @@ import sys
 import cv2
 import numpy as np
 
+#To run: .\find_peak_pixel.py 450nmLC.png 660nmLC30int.png 735nmLC.png --flip --band_half_height 0 --smooth 1
+#Prints the index of the pixel where the peak is located. This pixel index is later used as anchor in the calibration in TODO. 
+#For the left chamber, the following pixel indices has been found: pixel_idx = [216, 504, 600] for the theoretical peaks at 450, 660 and 735 nm (Heliospectra). 
+#For the right chamber, the following pixel indices has been found: TODO
+
+
 #Load image  
 def load_grayscale_image(image_path: str) -> np.ndarray:
     if not os.path.isfile(image_path):
