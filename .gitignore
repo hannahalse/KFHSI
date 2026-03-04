@@ -10,3 +10,6 @@ edge/data/
 
 # --- Debug / temporary output ---
 server/debug_pictures/
+
+# Calibration debug outputs
+smile_keystone/calibration_data/debug_calib/

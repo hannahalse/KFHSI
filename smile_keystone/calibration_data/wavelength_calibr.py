@@ -360,18 +360,20 @@ if __name__ == "__main__":
     # Load test image
     test_path = os.path.join(base_dir, "660nmLC30int.png")
     image = cv2.imread(test_path, cv2.IMREAD_GRAYSCALE)
-    print(f"Size of test image: {image.shape}")
-
     if image is None:
         raise RuntimeError("Could not load test image")
 
-    # Hvis kameraet må flippes:
     image = np.fliplr(image)
-
-    print("Image shape:", image.shape)
-    
     spectrum = image.sum(axis=0)
     nm_axis = wavelength_axis(image.shape[1])
+    
+    peak_i = int(np.argmax(spectrum))
+    w = 10
+    lo = max(0, peak_i - w)
+    hi = min(len(spectrum), peak_i + w + 1)
+
+    centroid_nm = float(np.sum(nm_axis[lo:hi] * spectrum[lo:hi]) / np.sum(spectrum[lo:hi]))
+    print("Peak centroid (nm):", centroid_nm)
 
     # ---- Klipp til 400–800 nm ----
     mask = (nm_axis >= 400) & (nm_axis <= 800)
