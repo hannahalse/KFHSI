@@ -7,7 +7,7 @@ This script uses:
 - Process: integrate spectrum, align Ar->Hg, estimate alpha, subtract alpha*Ar from Hg
 - Detect peaks and plot spectra
 - Fit linear + quadratic calibration using your chosen pixel_points and nm_points
-- Saves outputs WITHOUT overwriting your originals
+- Saves outputs
 """
 import os
 import cv2
@@ -15,7 +15,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import correlate, find_peaks
 
-#Set to True to save debug images (DO NOT overwrite originals)
+#Set to True to save debug images
 save_debug_images = False 
 
 # Base directory 
@@ -33,13 +33,13 @@ if save_debug_images:
 ar_original_name = "ar_200ms.png"
 hg_original_name = "hg_200ms.png"
 
-# Flip originals horizontally (spectral axis)
+# Flip originals horizontally
 flip_original_x = True
 
-# Preprocess settings
+# Preprocess settings (must match camera config)
 roi_top = 248
 roi_bottom = 803
-binning_factor = 2  # Must match camera config
+binning_factor = 2
 
 # Spectrum integration ROI inside the preprocessed image
 y_roi = (0, 555)
@@ -47,12 +47,13 @@ y_roi = (0, 555)
 # Alignment search window (pixels)
 max_shift = 10
 
-# Peak detection parameters
+# Peak detection parameters. How many pixels we are willing to move the spectrums to get them to overlap. 
+#The other ones - what counts as a peak. 12% of max to be a peak, 10 pixels in distance from each other, and prominence lets ut know how much a peak is sticking up from the neighbours. 
 min_height_rel = 0.12
 min_distance = 10
 prominence_rel = 0.03
 
-# Peaks (pixels) selected (from Ar aligned) for calibration
+# Peaks (pixels) selected (from Ar aligned) for calibration (Found by running the script and looking at the printed peaks).
 pixel_points = np.array([564, 579, 608, 625, 643, 661, 731, 754, 777, 883], dtype=float)
 
 # Corresponding known wavelengths (from Maries thesis)(nm)
@@ -60,15 +61,15 @@ nm_points = np.array([696.54, 706.72, 727.29, 738.40, 750.93, 763.51, 810.95, 82
 
 
 # -----------------------------
-# CALIBRATION FUNCTIONS (fitted functions)
+# CALIBRATION FUNCTIONS (fitted functions) 
 # -----------------------------
-#Hvor kommer denne fra egentlig? 
+#From previous runs. If anything in script changes - change these too.  
 def pixel_to_nm_linear(pixel):
-    return 0.6770375752 * pixel + 315.3658549581
+    return 0.6773347176 * pixel + 315.1920552541
 
 
 def pixel_to_nm_quadratic(pixel):
-    return -5.4522523972e-05 * pixel**2 + 0.7549698585 * pixel + 288.0768570442
+    return -5.6694394352e-05 * pixel**2 + 0.7583713843 * pixel + 286.8160173070
 
 
 def wavelength_axis(width: int):
@@ -140,7 +141,6 @@ def estimate_alpha(spec_hg: np.ndarray, spec_ar: np.ndarray, mask=None) -> float
     num = np.sum(spec_hg[mask] * spec_ar[mask])
     den = np.sum(spec_ar[mask] ** 2)
     return float(num / den) if den > 0 else 0.0
-
 
 def subtract_ar_from_hg_images(hg_img: np.ndarray, ar_img: np.ndarray, y_roi_local, max_shift_local=10, show_debug=True):
     spec_hg = integrated_spectrum(hg_img, y_roi_local)
@@ -242,11 +242,11 @@ def print_fit_and_errors(pixel: np.ndarray, nm: np.ndarray, coeff2: np.ndarray):
     rms_error = float(np.sqrt(np.mean(error ** 2)))
 
     a, b, c = coeff2
-    print("\nKalibreringsfunksjon:")
+    print("\Calibration:")
     print(f"nm = {a:.10e} * p^2 + {b:.10f} * p + {c:.10f}")
     print(f"Quadratic max |error| = {max_error:.3f} nm")
 
-    print("\nFeil per punkt (nm):")
+    print("\nError per point (nm):")
     for p, real, pred in zip(pixel, nm, nm_fit):
         print(f"pixel {p:4.0f}:  real={real:8.2f}   pred={pred:8.2f}   err={pred-real:6.3f}")
 
