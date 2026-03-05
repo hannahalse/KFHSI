@@ -15,10 +15,15 @@ from SpectralTools import (
     calculate_ndvi,
 )
 
+from calibration.wavelength_calibration import (
+    px_to_nm,
+    #nm_to_px,
+    wavelength_axis,
+)
 
 # ----------------- CONFIG -----------------
-start_nm      = 400.0
-end_nm        = 800.0
+wl_min = 380.0
+wl_max = 820.0
 SHIFT         = -5 
 BASE_DIR      = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DATA_DIR      = os.path.join(BASE_DIR, "edge", "data")
@@ -131,8 +136,17 @@ def build_cube(rows, Zs, scan_folder, start_nm, end_nm):
     H, W = sample_img.shape
     print(f"Frame size: H={H}, W={W}")
 
-    wavs = np.linspace(start_nm, end_nm, W, dtype=np.float32)  # wavelength grid
-    print(f"Spectral grid: {len(wavs)} bands from {start_nm} nm to {end_nm} nm")
+    #------- PLACEHOLDER -------
+    #wavs = np.linspace(start_nm, end_nm, W, dtype=np.float32)  # wavelength grid
+    #print(f"Spectral grid: {len(wavs)} bands from {start_nm} nm to {end_nm} nm")
+    #------- PLACEHOLDER -------
+
+    wavs = wavelength_axis(W).astype(np.float32)
+    #Clipping the cube: 
+    mask = (wavs >= wl_min) & (wavs <= wl_max)
+    keep_idx = np.where(mask)[0]
+    wavs = wavs[mask]
+    print(f"Clipped spectral range: {wavs[0]:.1f} nm → {wavs[-1]:.1f} nm ({len(wavs)} bands)")
 
     Zc = len(Zs)
     cube_nm = np.zeros((Zc, Xc, H, len(wavs)), dtype=np.float32)  # empty cube [Z, X, Y, W]
@@ -153,9 +167,12 @@ def build_cube(rows, Zs, scan_folder, start_nm, end_nm):
             # Store the full image for this (Z, X) position
             #Flip the image horizontally
             #img = np.fliplr(img)   
-            cube_nm[zi, xi, :, :] = img.astype(np.float32)
+            img_f = img.astype(np.float32)
+            cube_nm[zi, xi, :, :] = img_f[:, keep_idx]
+            #cube_nm[zi, xi, :, :] = img.astype(np.float32)
 
     print("Built cube_nm with shape (Z, X, Y, wavelength):", cube_nm.shape)
+    print("Cube wavelengths:", cube.wavs_nm[0], cube.wavs_nm[-1])
 
     # ---- Save to disk ----
     npz_path = os.path.join(scan_folder, "cube_ZXnm.npz")
