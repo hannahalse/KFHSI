@@ -15,11 +15,23 @@ from SpectralTools import (
     calculate_ndvi,
 )
 
-from calibration.wavelength_calibration import (
-    px_to_nm,
-    #nm_to_px,
-    wavelength_axis,
-)
+#from calibration.wavelength_calibr import (
+#    wavelength_axis,
+#)
+
+A = 0.7241145833
+B = 288.45625
+
+def px_to_nm(px):
+    "Convert pixel index → wavelength (nm)"
+    return A * px + B
+
+
+def wavelength_axis(width):
+    "Return wavelength for every pixel in the image"
+    pixels = np.arange(width)
+    return px_to_nm(pixels)
+
 
 # ----------------- CONFIG -----------------
 wl_min = 380.0
@@ -109,7 +121,7 @@ class CubeNM:
     def numpy(self):
         return self.data
 
-def build_cube(rows, Zs, scan_folder, start_nm, end_nm):
+def build_cube(rows, Zs, scan_folder):
     """
     Build a hyperspectral cube from grouped scan rows.
 
@@ -172,7 +184,7 @@ def build_cube(rows, Zs, scan_folder, start_nm, end_nm):
             #cube_nm[zi, xi, :, :] = img.astype(np.float32)
 
     print("Built cube_nm with shape (Z, X, Y, wavelength):", cube_nm.shape)
-    print("Cube wavelengths:", cube.wavs_nm[0], cube.wavs_nm[-1])
+    print("Cube wavelengths:", wavs[0], wavs[-1])
 
     # ---- Save to disk ----
     npz_path = os.path.join(scan_folder, "cube_ZXnm.npz")
@@ -248,7 +260,7 @@ if __name__ == "__main__":
     
     # ---- Building the cube from scan ----
     rows, Zs = sort_images(scan_folder)
-    cube_nm, wavs, npz_path = build_cube(rows, Zs, scan_folder, start_nm, end_nm)
+    cube_nm, wavs, npz_path = build_cube(rows, Zs, scan_folder)
 
     # ---- Correcting snake-like X-offsets -------
     # 1) Building alternating +/- X-shifts per Z-row
