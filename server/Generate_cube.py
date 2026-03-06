@@ -129,8 +129,6 @@ def build_cube(rows, Zs, scan_folder):
         rows: dict[z] -> list of (x, full_path)
         Zs: sorted list of Z positions (keys from rows)
         scan_folder: folder where the X*_Z*.png images are stored (used for saving npz)
-        start_nm: start wavelength 
-        end_nm: end wavelength 
 
     Returns:
         cube_nm: ndarray with shape (Z, X, Y, W)
@@ -148,10 +146,10 @@ def build_cube(rows, Zs, scan_folder):
     H, W = sample_img.shape
     print(f"Frame size: H={H}, W={W}")
 
-    #------- PLACEHOLDER -------
+    #------- PLACEHOLDER FUNCTION -------
     #wavs = np.linspace(start_nm, end_nm, W, dtype=np.float32)  # wavelength grid
     #print(f"Spectral grid: {len(wavs)} bands from {start_nm} nm to {end_nm} nm")
-    #------- PLACEHOLDER -------
+    #------- PLACEHOLDER FUNCTION-------
 
     wavs = wavelength_axis(W).astype(np.float32)
     #Clipping the cube: 
