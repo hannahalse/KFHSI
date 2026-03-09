@@ -39,6 +39,39 @@ FLIP_X = False  # Set to True if images need to be flipped horizontally
 
 # -------------------------------------------
 
+class CubeNM:
+    def __init__(self, data, wavs_nm):
+        """
+        data: ndarray (Z, X, Y, W) where axis=3 corresponds to wavelengths
+        wavs_nm: ndarray (W,) with wavelengths in nm
+        """
+        self.data = data
+        self.wavs_nm = wavs_nm.astype(np.float32)
+        self.min_nm = float(wavs_nm[0])
+        self.max_nm = float(wavs_nm[-1])
+
+    def __getitem__(self, idx):
+        # Support cube[z, x, y, nm] with nm in wavelength range
+        if isinstance(idx, tuple) and len(idx) == 4 and isinstance(idx[3],(int, float, np.integer, np.floating)):
+            z, x, y, nm = idx
+            nm = float(nm)
+            if nm < self.min_nm or nm > self.max_nm:
+                raise IndexError(f"nm index {nm} out of range [{self.min_nm}, {self.max_nm}]")
+            k = int(np.searchsorted(self.wavs_nm, nm, side='left'))
+            if k == len(self.wavs_nm):
+                k -= 1
+            elif k > 0 and abs(self.wavs_nm[k] - nm) > abs(self.wavs_nm[k-1] - nm):
+                k -= 1
+            return self.data[z, x, y, k]
+        return self.data[idx]
+
+    @property
+    def shape(self):
+        return self.data.shape
+
+    def numpy(self):
+        return self.data
+
 def find_last_modified_folder(data_dir=DATA_DIR, prefix="scan_"):
     """
     Finds the latest modified folder in data_dir with the given prefix.
@@ -84,39 +117,6 @@ def sort_images(scan_folder):
 
     Zs = sorted(rows.keys())  # sorted Z positions (top → bottom)
     return rows, Zs
-
-class CubeNM:
-    def __init__(self, data, wavs_nm):
-        """
-        data: ndarray (Z, X, Y, W) where axis=3 corresponds to wavelengths
-        wavs_nm: ndarray (W,) with wavelengths in nm
-        """
-        self.data = data
-        self.wavs_nm = wavs_nm.astype(np.float32)
-        self.min_nm = float(wavs_nm[0])
-        self.max_nm = float(wavs_nm[-1])
-
-    def __getitem__(self, idx):
-        # Support cube[z, x, y, nm] with nm in wavelength range
-        if isinstance(idx, tuple) and len(idx) == 4 and isinstance(idx[3],(int, float, np.integer, np.floating)):
-            z, x, y, nm = idx
-            nm = float(nm)
-            if nm < self.min_nm or nm > self.max_nm:
-                raise IndexError(f"nm index {nm} out of range [{self.min_nm}, {self.max_nm}]")
-            k = int(np.searchsorted(self.wavs_nm, nm, side='left'))
-            if k == len(self.wavs_nm):
-                k -= 1
-            elif k > 0 and abs(self.wavs_nm[k] - nm) > abs(self.wavs_nm[k-1] - nm):
-                k -= 1
-            return self.data[z, x, y, k]
-        return self.data[idx]
-
-    @property
-    def shape(self):
-        return self.data.shape
-
-    def numpy(self):
-        return self.data
 
 def build_alternating_shifts(Zc, plus_first=True):
     """
