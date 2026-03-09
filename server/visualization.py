@@ -1,6 +1,5 @@
-import os, re
+import os
 import numpy as np
-import cv2
 from collections import defaultdict
 import matplotlib.pyplot as plt
 
@@ -30,9 +29,7 @@ if __name__ == "__main__":
 
     data = np.load(npz_path)
     cube = CubeNM(data["cube"], data["wavs_nm"])
-
-
-    #RESULT IS NOT SHIFTED
+    
     _, _, H, _ = cube.shape
     y_middle = H // 2
 
