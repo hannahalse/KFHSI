@@ -283,12 +283,5 @@ if __name__ == "__main__":
     print("Using this scan folder:", scan_folder)
 
     cube, npz_path = generate_cube(scan_folder)
-
-    _, _, H, _ = cube.shape
-    y_middle = H // 2
-
-    rgb_image_path = os.path.join(scan_folder, "reconstructed_rgb.png")
-    rgb_image, out_path = reconstruct_rgb_image(cube, rgb_image_path, y=y_middle)
-
-    print("Saved RGB image to:", out_path)
+    print("Cube generation complete. Cube shape:", cube.shape)
     
