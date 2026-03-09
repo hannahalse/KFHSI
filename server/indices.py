@@ -5,7 +5,7 @@ import numpy as np
 #TODO: Find which CRI variant I use (CRI1, CRI2) 
 #TODO: make to reflectance not raw intensity. 
 
-def calculate_ndvi(cube: CubeNM) -> np.ndarray:
+def calculate_ndvi(cube) -> np.ndarray:
     """
     Calculate NDVI from a hyperspectral cube.
 
@@ -22,7 +22,7 @@ def calculate_ndvi(cube: CubeNM) -> np.ndarray:
     return ndvi
 
 
-def calculate_cri(cube: CubeNM) -> np.ndarray:
+def calculate_cri(cube) -> np.ndarray:
     """
     Calculate CRI from a hyperspectral cube.
 
@@ -45,7 +45,7 @@ def calculate_cri(cube: CubeNM) -> np.ndarray:
     return cri
 
 
-def calculate_pri(cube: CubeNM) -> np.ndarray:
+def calculate_pri(cube) -> np.ndarray:
     """
     Calculate PRI from a hyperspectral cube.
 

@@ -10,9 +10,10 @@ from cube_visuals import (
     reconstruct_rgb_image,
 )
 
-from SpectralTools import (
-    calculate_nir_red_indices,
+from indices import (
     calculate_ndvi,
+    calculate_cri,
+    calculate_pri,
 )
 
 #from calibration.wavelength_calibr import (
@@ -121,75 +122,7 @@ class CubeNM:
     def numpy(self):
         return self.data
 
-def build_cube(rows, Zs, scan_folder):
-    """
-    Build a hyperspectral cube from grouped scan rows.
 
-    Parameters:
-        rows: dict[z] -> list of (x, full_path)
-        Zs: sorted list of Z positions (keys from rows)
-        scan_folder: folder where the X*_Z*.png images are stored (used for saving npz)
-
-    Returns:
-        cube_nm: ndarray with shape (Z, X, Y, W)
-        wavs:    1D ndarray with wavelengths in nm (length = W)
-        npz_path: path to the saved .npz file
-    """
-    # ---- Read first frame to get H, W and wavelength grid ----
-    first_z = Zs[0]
-    first_x_sorted = sorted(rows[first_z], key=lambda t: t[0])
-    Xc = len(first_x_sorted)  # number of X positions in each Z row
-
-    sample_img = cv2.imread(first_x_sorted[0][1], cv2.IMREAD_GRAYSCALE)
-    if sample_img is None:
-        raise RuntimeError(f"Could not read {first_x_sorted[0][1]}")
-    H, W = sample_img.shape
-    print(f"Frame size: H={H}, W={W}")
-
-    #------- PLACEHOLDER FUNCTION -------
-    #wavs = np.linspace(start_nm, end_nm, W, dtype=np.float32)  # wavelength grid
-    #print(f"Spectral grid: {len(wavs)} bands from {start_nm} nm to {end_nm} nm")
-    #------- PLACEHOLDER FUNCTION-------
-
-    wavs = wavelength_axis(W).astype(np.float32)
-    #Clipping the cube: 
-    mask = (wavs >= wl_min) & (wavs <= wl_max)
-    keep_idx = np.where(mask)[0]
-    wavs = wavs[mask]
-    print(f"Clipped spectral range: {wavs[0]:.1f} nm → {wavs[-1]:.1f} nm ({len(wavs)} bands)")
-
-    Zc = len(Zs)
-    cube_nm = np.zeros((Zc, Xc, H, len(wavs)), dtype=np.float32)  # empty cube [Z, X, Y, W]
-
-    # ---- Fill the cube (Z, X, Y, W) ----
-    for zi, z in enumerate(Zs):
-        x_paths = sorted(rows[z], key=lambda t: int(t[0]))
-        if len(x_paths) != Xc:
-            print(f"Row Z={z} has {len(x_paths)} X positions (expected {Xc}).")
-
-        for xi, (_x, path) in enumerate(x_paths):
-            img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-            if img is None:
-                raise RuntimeError(f"Could not read {path}")
-            if img.shape != (H, W):
-                raise RuntimeError(f"Inconsistent frame size at {path}: {img.shape} vs {(H, W)}")
-
-            # Store the full image for this (Z, X) position
-            #Flip the image horizontally
-            #img = np.fliplr(img)   
-            img_f = img.astype(np.float32)
-            cube_nm[zi, xi, :, :] = img_f[:, keep_idx]
-            #cube_nm[zi, xi, :, :] = img.astype(np.float32)
-
-    print("Built cube_nm with shape (Z, X, Y, wavelength):", cube_nm.shape)
-    print("Cube wavelengths:", wavs[0], wavs[-1])
-
-    # ---- Save to disk ----
-    npz_path = os.path.join(scan_folder, "cube_ZXnm.npz")
-    np.savez_compressed(npz_path, cube=cube_nm, wavs_nm=wavs, Zs=np.array(Zs, dtype=np.int32))
-    print("Saved cube to:", npz_path)
-
-    return cube_nm, wavs, npz_path
 
 def build_alternating_shifts(Zc, plus_first=True):
     """
@@ -249,42 +182,123 @@ def crop_valid_overlap(shifted):
     xs = slice(left, right) # Valid X range
     return shifted[:, xs, :, :], xs # Return cropped cube and X slice
 
-if __name__ == "__main__":
-    # ---- Finding the latest modified scan folder ----
-    scan_folder = find_last_modified_folder()
-    #To choose a specific scan folder use this: 
-    #scan_folder = "/Users/hannahalse/KFSpectra/edge/data/scan_30October_15:21:15"
-    print("Using this scan folder:", scan_folder)
-    
-    # ---- Building the cube from scan ----
+def build_raw_cube(rows, Zs):
+    """
+    Build the raw hyperspectral cube from grouped scan rows.
+
+    Returns:
+        cube_nm_raw: ndarray with shape (Z, X, Y, W)
+        wavs: 1D ndarray with wavelengths in nm
+    """
+    # ----- Read first frame to get H, W and wavelength grid ----
+    first_z = Zs[0]
+    first_x_sorted = sorted(rows[first_z], key=lambda t: t[0])
+    Xc = len(first_x_sorted)    #Number of X positions in each Z row
+
+    sample_img = cv2.imread(first_x_sorted[0][1], cv2.IMREAD_GRAYSCALE)
+    if sample_img is None:
+        raise RuntimeError(f"Could not read {first_x_sorted[0][1]}")
+
+    H, W = sample_img.shape
+    print(f"Frame size: H={H}, W={W}")
+
+    wavs = wavelength_axis(W).astype(np.float32)
+    #Clipping the cube:
+    mask = (wavs >= wl_min) & (wavs <= wl_max)
+    keep_idx = np.where(mask)[0]
+    wavs = wavs[mask]
+    print(f"Clipped spectral range: {wavs[0]:.1f} nm → {wavs[-1]:.1f} nm ({len(wavs)} bands)")
+
+    Zc = len(Zs)
+    cube_nm_raw = np.zeros((Zc, Xc, H, len(wavs)), dtype=np.float32)    #Empty cube [Z, X, Y, W]
+
+    #Fill the cube
+    for zi, z in enumerate(Zs):
+        x_paths = sorted(rows[z], key=lambda t: int(t[0]))
+        if len(x_paths) != Xc:
+            print(f"Row Z={z} has {len(x_paths)} X positions (expected {Xc}).")
+
+        for xi, (_x, path) in enumerate(x_paths):
+            img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+            if img is None:
+                raise RuntimeError(f"Could not read {path}")
+            if img.shape != (H, W):
+                raise RuntimeError(f"Inconsistent frame size at {path}: {img.shape} vs {(H, W)}")
+            #FLIP THE IMAGE???? TODO
+            img_flipped = np.fliplr(img)
+            img_f = img_flipped.astype(np.float32)
+            cube_nm_raw[zi, xi, :, :] = img_f[:, keep_idx]
+
+    print("Built raw cube with shape (Z, X, Y, wavelength):", cube_nm_raw.shape)
+    print("Cube wavelengths:", wavs[0], wavs[-1])
+
+    return cube_nm_raw, wavs
+
+
+def generate_cube(scan_folder):
+    """
+    Full cube generation pipeline:
+    1. sort scan images
+    2. build raw cube
+    3. apply snake-like X shifts
+    4. crop to valid overlap
+    5. wrap in CubeNM
+    6. save corrected cube
+
+    Returns:
+        cube: CubeNM object
+        npz_path: path to saved corrected cube
+    """
     rows, Zs = sort_images(scan_folder)
-    cube_nm, wavs, npz_path = build_cube(rows, Zs, scan_folder)
 
-    # ---- Correcting snake-like X-offsets -------
-    # 1) Building alternating +/- X-shifts per Z-row
+    # ---- Build raw cube ----
+    cube_nm_raw, wavs = build_raw_cube(rows, Zs)
+
+    # ---- Correct snake-like X-offsets ----
     alt_shifts = build_alternating_shifts(Zc=len(Zs), plus_first=True)
+    shifted_cube = apply_integer_x_shifts(cube_nm_raw, alt_shifts, pad_value=np.nan)
+    cube_nm_corr, xslice = crop_valid_overlap(shifted_cube)
 
-    # 2) Applying shifts to the cube (NaNs at the edges)
-    shifted_cube = apply_integer_x_shifts(cube_nm, alt_shifts, pad_value=np.nan)
+    print("Sym-shifted & cropped cube shape:", cube_nm_corr.shape, "X slice:", xslice)
 
-    # 3) Cropping to the common valid X-overlap
-    cube_nm_sym, xslice = crop_valid_overlap(shifted_cube)
-    print("Sym-shifted & cropped cube shape:", cube_nm_sym.shape, "X slice:", xslice)
-
-    # 4) Continue working with the corrected cube wrapped in CubeNM ---
-    cube_nm = cube_nm_sym
-    cube = CubeNM(cube_nm, wavs)
+    # ---- Wrap corrected cube ----
+    cube = CubeNM(cube_nm_corr, wavs)
     print("Final cube shape (Z, X, Y, nm):", cube.shape)
-    
-    
+
+    # ---- Save corrected cube ----
+    npz_path = os.path.join(scan_folder, "cube_ZXnm_corrected.npz")
+    np.savez_compressed(
+        npz_path,
+        cube=cube.data,
+        wavs_nm=cube.wavs_nm,
+        Zs=np.array(Zs, dtype=np.int32),
+        xslice_start=-1 if xslice.start is None else xslice.start,
+        xslice_stop=-1 if xslice.stop is None else xslice.stop,
+    )
+    print("Saved corrected cube to:", npz_path)
+
+    return cube, npz_path
 
 
-    _, _, H, _ = cube_nm.shape
+if __name__ == "__main__":
+    scan_folder = find_last_modified_folder()
+    # scan_folder = "/Users/hannahalse/KFSpectra/edge/data/scan_30October_15:21:15"
+    print("Using this scan folder:", scan_folder)
+
+    cube, npz_path = generate_cube(scan_folder)
+
+    _, _, H, _ = cube.shape
     y_middle = H // 2
+
     rgb_image_path = os.path.join(scan_folder, "reconstructed_rgb.png")
     rgb_image, out_path = reconstruct_rgb_image(cube, rgb_image_path, y=y_middle)
+
+    print("Saved RGB image to:", out_path)
     
-    """
+    
+"""
+
+
     # ---- Visualisations ----
     #_, _, H, _ = cube_nm.shape
     #y_middle = H // 2
@@ -317,6 +331,6 @@ if __name__ == "__main__":
     """
 
 
-  
+
     
                                                  
