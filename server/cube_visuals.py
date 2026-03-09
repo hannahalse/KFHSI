@@ -126,6 +126,5 @@ def reconstruct_rgb_image(cube, out_path, y=None, aggregate="mean"):
 
     # Save to disk
     plt.imsave(out_path, rgb_image_uint8)
-    print(f"Saved RGB image to: {out_path}")
 
     return rgb_image_uint8, out_path

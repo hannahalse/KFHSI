@@ -10,16 +10,11 @@ from cube_visuals import (
     reconstruct_rgb_image,
 )
 
-from indices import (
-    calculate_ndvi,
-    calculate_cri,
-    calculate_pri,
-)
-
 #from calibration.wavelength_calibr import (
 #    wavelength_axis,
 #)
 
+#-------------TODO Cant seem to import this from calibration, so hardcoding here for now.----------------
 A = 0.7241145833
 B = 288.45625
 
@@ -40,6 +35,7 @@ wl_max = 820.0
 SHIFT         = -5 
 BASE_DIR      = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DATA_DIR      = os.path.join(BASE_DIR, "edge", "data")
+FLIP_X = False  # Set to True if images need to be flipped horizontally
 
 # -------------------------------------------
 
@@ -121,8 +117,6 @@ class CubeNM:
 
     def numpy(self):
         return self.data
-
-
 
 def build_alternating_shifts(Zc, plus_first=True):
     """
@@ -224,16 +218,19 @@ def build_raw_cube(rows, Zs):
                 raise RuntimeError(f"Could not read {path}")
             if img.shape != (H, W):
                 raise RuntimeError(f"Inconsistent frame size at {path}: {img.shape} vs {(H, W)}")
+            
             #FLIP THE IMAGE???? TODO
-            img_flipped = np.fliplr(img)
-            img_f = img_flipped.astype(np.float32)
-            cube_nm_raw[zi, xi, :, :] = img_f[:, keep_idx]
+            img_f = img.astype(np.float32)
+            if FLIP_X:
+                img_f = np.fliplr(img_f)
+                cube_nm_raw[zi, xi, :, :] = img_f[:, keep_idx]
+            else: 
+                cube_nm_raw[zi, xi, :, :] = img_f[:, keep_idx]
 
     print("Built raw cube with shape (Z, X, Y, wavelength):", cube_nm_raw.shape)
     print("Cube wavelengths:", wavs[0], wavs[-1])
 
     return cube_nm_raw, wavs
-
 
 def generate_cube(scan_folder):
     """
@@ -279,9 +276,9 @@ def generate_cube(scan_folder):
 
     return cube, npz_path
 
-
 if __name__ == "__main__":
     scan_folder = find_last_modified_folder()
+    #Choosing one specific folder: 
     # scan_folder = "/Users/hannahalse/KFSpectra/edge/data/scan_30October_15:21:15"
     print("Using this scan folder:", scan_folder)
 
@@ -295,42 +292,3 @@ if __name__ == "__main__":
 
     print("Saved RGB image to:", out_path)
     
-    
-"""
-
-
-    # ---- Visualisations ----
-    #_, _, H, _ = cube_nm.shape
-    #y_middle = H // 2
-
-    #visualise_wavelength_slice(cube, 520, os.path.join(scan_folder, "wavelength_520nm.png"))
-    #visualise_spectrum_at(cube, z=35, x=3, y=y_middle)
-    #rgb_image_path = os.path.join(scan_folder, "reconstructed_rgb.png")
-    #rgb_image, out_path = reconstruct_rgb_image(cube, rgb_image_path, y=y_middle)
-    
-
-    cube_file = "../edge/data/scan_16November_13:58:13/cube_ZXnm.npz"
-    data = np.load(cube_file)
-    cube = data["cube"]
-    wavelengths = data["wavs_nm"]
-    #print(f"Number of wavelengths {len(wavelengths)} from {wavelengths[0]} nm to {wavelengths[-1]} nm")
-    #print(f"Cube shape: {cube.shape}, whare length of cube[3] is: {cube.shape[3]}")
-
-    z, x = 18, 25  # velg en piksel midt på bladet
-    spectrum = cube[z, x, 225, :]  # hvis form (Z, Y, X, B) og du tar Z=0
-
-    plt.plot(wavelengths, spectrum)
-    plt.xlabel("Wavelength [nm]")
-    plt.ylabel("Intensity")
-    plt.show()
-
-    # ----- NDVI Calculation -----
-    #red_idx, nir_idx = calculate_nir_red_indices(cube, wavelengths)
-    #print("red_idx, nir_idx:", red_idx, nir_idx)
-    #ndvi_image = calculate_ndvi(cube, red_idx, nir_idx)
-    """
-
-
-
-    
-                                                 
