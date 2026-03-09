@@ -25,20 +25,29 @@ def visualise_spectrum_at(cube, z, x, y):
     plt.tight_layout()
     plt.show()
 
-def visualise_wavelength_slice(cube, wavelength_nm, out_path):
+
+def visualise_wavelength_slice(cube, wavelength_nm, out_path, y=None, aggregate="mean"):
     """
     Visualize a single wavelength slice from the cube and save as PNG.
 
     Parameters:
-        cube: CubeNM object with shape (Z, X, Y, W).
-        wavelength_nm: Wavelength in nanometers to visualize.
-        out_path: Output file path for the PNG image.
+        cube: CubeNM object with shape (Z, X, Y, W)
+        wavelength_nm: wavelength in nm to visualize
+        out_path: output PNG path
+        y: if not None, use one specific Y-row -> image shape (Z, X)
+        aggregate: if y is None, reduce over Y using this method ("mean" supported)
     """
-    # Get 3D slice (Z, X, Y) at the requested wavelength.
-    slice_3d = cube[:, :, :, wavelength_nm]   # shape: (Z, X, Y)
+    # Extract 3D slice at requested wavelength
+    slice_3d = cube[:, :, :, wavelength_nm]   # shape (Z, X, Y)
 
-    # Aggregate over Y to get a 2D image (Z, X)
-    img = slice_3d.mean(axis=2)               # shape: (Z, X)
+    # Choose how to reduce Y
+    if y is not None:
+        img = slice_3d[:, :, y]   # one specific row
+    else:
+        if aggregate == "mean":
+            img = slice_3d.mean(axis=2)
+        else:
+            raise ValueError(f"Unsupported aggregate: {aggregate}")
 
     # Normalize for visualization
     lo, hi = np.percentile(img, (1, 99))
@@ -46,15 +55,16 @@ def visualise_wavelength_slice(cube, wavelength_nm, out_path):
 
     # Plot and save
     plt.figure(figsize=(8, 6))
-    plt.imshow(img_n, cmap="gray", aspect='auto')
+    plt.imshow(img_n, cmap="gray", aspect="auto")
     plt.xlabel("X position")
     plt.ylabel("Z position")
-    plt.title(f"Slice of cube at wavelength: {float(wavelength_nm):.1f} nm")
+    plt.title(f"Slice at {float(wavelength_nm):.1f} nm")
     plt.colorbar(label="Normalized intensity")
     plt.tight_layout()
     plt.savefig(out_path, dpi=200)
     plt.close()
-    print(f"Wavelength ~{float(wavelength_nm):.1f} nm -> {out_path}")
+
+    print(f"Wavelength ~{float(wavelength_nm):.1f} nm saved to {out_path}")
     
 def reconstruct_rgb_image(cube, out_path, y=None, aggregate="mean"):
     """
