@@ -35,7 +35,7 @@ wl_max = 820.0
 SHIFT         = -5 
 BASE_DIR      = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DATA_DIR      = os.path.join(BASE_DIR, "edge", "data")
-FLIP_X = False  # Set to True if images need to be flipped horizontally
+FLIP_X = True  # Set to True if images need to be flipped horizontally
 
 # -------------------------------------------
 
@@ -277,9 +277,10 @@ def generate_cube(scan_folder):
     return cube, npz_path
 
 if __name__ == "__main__":
-    scan_folder = find_last_modified_folder()
+    #scan_folder = find_last_modified_folder()
     #Choosing one specific folder: 
-    # scan_folder = "/Users/hannahalse/KFSpectra/edge/data/scan_30October_15:21:15"
+    scan_folder = os.path.join(BASE_DIR, "edge", "data", "scan_10March_10:27:59")
+    
     print("Using this scan folder:", scan_folder)
 
     cube, npz_path = generate_cube(scan_folder)
