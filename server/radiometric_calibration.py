@@ -6,7 +6,7 @@ from Generate_cube import CubeNM
 
 EPS = 1e-6
 
-# Samme kalibrering som i resten av prosjektet
+# Samme kalibrering som i resten av prosjektet - Får ikke til å importere. 
 A = 0.7241145833
 B = 288.45625
 
