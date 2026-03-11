@@ -118,6 +118,28 @@ def plot_white_dark_difference(white_path, dark_path, flip_x=True):
     return wavs, diff
 
 
+def show_index_map(index_data, name, y=None, cmap="RdYlGn", vmin=None, vmax=None):
+    """
+    Show a 2D map from a 3D spectral index array with shape (Z, X, Y).
+    """
+    if y is None:
+        y = index_data.shape[2] // 2
+
+    index_map = index_data[:, :, y]
+
+    plt.figure(figsize=(8, 6))
+    plt.imshow(index_map, cmap=cmap, vmin=vmin, vmax=vmax, aspect="auto")
+    plt.colorbar(label=name)
+    plt.title(f"{name} map at y={y}")
+    plt.xlabel("X")
+    plt.ylabel("Z")
+    plt.tight_layout()
+    plt.show()
+
+    print(f"{name} min: {np.nanmin(index_data):.4f}")
+    print(f"{name} max: {np.nanmax(index_data):.4f}")
+    print(f"{name} mean: {np.nanmean(index_data):.4f}")
+
 
 if __name__ == "__main__":
     
@@ -126,24 +148,17 @@ if __name__ == "__main__":
     output_path = os.path.join(scan_folder, "cube_ZXnm_radiometric.npz")
     save_corrected_cube(output_path, cube_reflectance)
     ndvi = calculate_ndvi(cube_reflectance)
+    pri = calculate_pri(cube_reflectance)
+    cri = calculate_cri(cube_reflectance)
+
     print(f"NDVI shape: {ndvi.shape}")
+    print(f"PRI shape: {pri.shape}")
+    print(f"CRI shape: {cri.shape}")
 
     y_middle = ndvi.shape[2] // 2
-    ndvi_map = ndvi[:, :, y_middle]
-
-    plt.figure(figsize=(8, 6))
-    plt.imshow(ndvi_map, cmap="RdYlGn", vmin=-1, vmax=1, aspect="auto")
-    plt.colorbar(label="NDVI")
-    plt.title(f"NDVI map at y={y_middle}")
-    plt.xlabel("X")
-    plt.ylabel("Z")
-    plt.tight_layout()
-    plt.show()
-    print("NDVI min:", np.nanmin(ndvi))
-    print("NDVI max:", np.nanmax(ndvi))
-    print("NDVI mean:", np.nanmean(ndvi))
+    show_index_map(ndvi, "NDVI", y=y_middle, cmap="RdYlGn", vmin=-1, vmax=1)
+    show_index_map(pri, "PRI", y=y_middle, cmap="RdYlGn", vmin=-1, vmax=1)
+    show_index_map(cri, "CRI", y=y_middle, cmap="viridis")
     
     current_dir = os.path.dirname(os.path.abspath(__file__))
-
-    reconstruct_rgb_image(cube, out_path=os.path.join(current_dir, "rgb_image.png"), y=y_middle)
-    
+    reconstruct_rgb_image(cube_reflectance, out_path=os.path.join(current_dir, "rgb_image.png"), y=y_middle)
