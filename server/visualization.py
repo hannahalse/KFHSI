@@ -145,20 +145,22 @@ if __name__ == "__main__":
     
     cube_reflectance = radiometric_correct_cube(cube, white_path=white_path, dark_path=dark_path, flip_x=True)
 
-    output_path = os.path.join(scan_folder, "cube_ZXnm_radiometric.npz")
-    save_corrected_cube(output_path, cube_reflectance)
+    #output_path = os.path.join(scan_folder, "cube_ZXnm_radiometric.npz")
+    #save_corrected_cube(output_path, cube_reflectance)
     ndvi = calculate_ndvi(cube_reflectance)
-    pri = calculate_pri(cube_reflectance)
-    cri = calculate_cri(cube_reflectance)
+    #pri = calculate_pri(cube_reflectance)
+    #cri = calculate_cri(cube_reflectance)
 
-    print(f"NDVI shape: {ndvi.shape}")
-    print(f"PRI shape: {pri.shape}")
-    print(f"CRI shape: {cri.shape}")
+    #print(f"NDVI shape: {ndvi.shape}")
+    #print(f"PRI shape: {pri.shape}")
+    #print(f"CRI shape: {cri.shape}")
 
     y_middle = ndvi.shape[2] // 2
-    show_index_map(ndvi, "NDVI", y=y_middle, cmap="RdYlGn", vmin=-1, vmax=1)
-    show_index_map(pri, "PRI", y=y_middle, cmap="RdYlGn", vmin=-1, vmax=1)
-    show_index_map(cri, "CRI", y=y_middle, cmap="viridis")
+    #show_index_map(ndvi, "NDVI", y=y_middle, cmap="RdYlGn", vmin=-1, vmax=1)
+    #show_index_map(pri, "PRI", y=y_middle, cmap="RdYlGn", vmin=-1, vmax=1)
+    #show_index_map(cri, "CRI", y=y_middle, cmap="viridis")
     
     current_dir = os.path.dirname(os.path.abspath(__file__))
     reconstruct_rgb_image(cube_reflectance, out_path=os.path.join(current_dir, "rgb_image.png"), y=y_middle)
+    
+    visualise_spectrum_at(cube_reflectance, z=11, x=9, y=y_middle)
