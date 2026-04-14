@@ -13,3 +13,9 @@ server/debug_pictures/
 
 # Calibration debug outputs
 smile_keystone/calibration_data/debug_calib/
+
+# Images generated
+*.png
+
+# Spec. files 
+*.spec
