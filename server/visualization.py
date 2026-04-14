@@ -29,7 +29,7 @@ from radiometric_calibration import (
 #KFHSI
 BASE_DIR      = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-scan_folder = os.path.join(BASE_DIR, "edge", "data", "scan_10March_10:27:59")
+scan_folder = os.path.join(BASE_DIR, "edge", "data", "scan_26March_13:22:22")  # Choose one specific folder for now
 npz_path = os.path.join(scan_folder, "cube_ZXnm_corrected.npz")
 
 data = np.load(npz_path)
