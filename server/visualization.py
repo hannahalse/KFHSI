@@ -29,7 +29,7 @@ from radiometric_calibration import (
 #KFHSI
 BASE_DIR      = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-scan_folder = os.path.join(BASE_DIR, "edge", "data", "scan_26March_13:22:22")  # Choose one specific folder for now
+scan_folder = os.path.join(BASE_DIR, "edge", "data", "scan_26March_12:29:35")  # Choose one specific folder for now
 npz_path = os.path.join(scan_folder, "cube_ZXnm_corrected.npz")
 
 data = np.load(npz_path)
@@ -95,7 +95,7 @@ def extract_spectrum_from_raw(image_path, flip_x=True, plot=True):
     return wavs_nm, spectrum
 
 
-def plot_white_dark_difference(white_path, dark_path, flip_x=True):
+def plot_white_dark_difference(white_path, dark_path, flip_x=True, plot=False):
     wavs, white_spec = extract_spectrum_from_raw(white_path, flip_x=flip_x)
     _, dark_spec = extract_spectrum_from_raw(dark_path, flip_x=flip_x)
 
@@ -107,13 +107,14 @@ def plot_white_dark_difference(white_path, dark_path, flip_x=True):
     # Limit to relevant spectral area (380–820 nm)
     mask = (wavs >= 380) & (wavs <= 820)
 
-    plt.figure(figsize=(8, 5))
-    plt.plot(wavs[mask], diff[mask])
-    plt.xlabel("Wavelength (nm)")
-    plt.ylabel("Intensity difference (a.u.)")
-    plt.title("White minus dark spectrum (380–820 nm)")
-    plt.tight_layout()
-    plt.show()
+    if plot:
+        plt.figure(figsize=(8, 5))
+        plt.plot(wavs[mask], diff[mask])
+        plt.xlabel("Wavelength (nm)")
+        plt.ylabel("Intensity difference (a.u.)")
+        plt.title("White minus dark spectrum (380–820 nm)")
+        plt.tight_layout()
+        plt.show()
 
     return wavs, diff
 
@@ -140,27 +141,140 @@ def show_index_map(index_data, name, y=None, cmap="RdYlGn", vmin=None, vmax=None
     print(f"{name} max: {np.nanmax(index_data):.4f}")
     print(f"{name} mean: {np.nanmean(index_data):.4f}")
 
+def create_ndvi_mask(ndvi, threshold=0.35, y=None):
+    """
+    Create binary plant mask from NDVI.
+
+    Parameters:
+        ndvi: ndarray with shape (Z, X, Y)
+        threshold: NDVI threshold for plant segmentation
+        y: if not None, return only one 2D slice (Z, X)
+
+    Returns:
+        mask: boolean ndarray
+    """
+    mask = ndvi > threshold
+
+    if y is not None:
+        return mask[:, :, y]
+
+    return mask
+
+
+def apply_mask_to_index(index_data, mask):
+    """
+    Set background pixels to NaN using a boolean mask.
+
+    index_data and mask must have the same shape.
+    """
+    masked = np.where(mask, index_data, np.nan)
+    return masked
+
+
+def summarize_masked_index(index_data, name="Index"):
+    """
+    Print summary statistics for masked index data.
+    Assumes background is NaN.
+    """
+    print(f"{name} min:  {np.nanmin(index_data):.4f}")
+    print(f"{name} max:  {np.nanmax(index_data):.4f}")
+    print(f"{name} mean: {np.nanmean(index_data):.4f}")
+    print(f"{name} std:  {np.nanstd(index_data):.4f}")
+
+
+def show_mask(mask_2d, title="Plant mask"):
+    """
+    Show 2D mask.
+    """
+    plt.figure(figsize=(8, 6))
+    plt.imshow(mask_2d, cmap="gray", aspect="auto")
+    plt.title(title)
+    plt.xlabel("X")
+    plt.ylabel("Z")
+    plt.tight_layout()
+    plt.show()
+
+
+def overlay_mask_on_rgb(rgb_image, mask_2d, alpha=0.35):
+    """
+    Overlay binary mask on RGB image for visual inspection.
+
+    rgb_image: (Z, X, 3), uint8 or float
+    mask_2d: (Z, X), bool
+    """
+    rgb = rgb_image.astype(np.float32).copy()
+    if rgb.max() > 1.0:
+        rgb = rgb / 255.0
+
+    overlay = rgb.copy()
+    overlay[mask_2d] = [1.0, 0.0, 0.0]  # red overlay on plant pixels
+
+    blended = (1 - alpha) * rgb + alpha * overlay
+
+    plt.figure(figsize=(8, 6))
+    plt.imshow(blended, aspect="auto")
+    plt.title("RGB with plant mask overlay")
+    plt.xlabel("X")
+    plt.ylabel("Z")
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == "__main__":
     
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    
     cube_reflectance = radiometric_correct_cube(cube, white_path=white_path, dark_path=dark_path, flip_x=True)
 
-    #output_path = os.path.join(scan_folder, "cube_ZXnm_radiometric.npz")
-    #save_corrected_cube(output_path, cube_reflectance)
     ndvi = calculate_ndvi(cube_reflectance)
-    #pri = calculate_pri(cube_reflectance)
-    #cri = calculate_cri(cube_reflectance)
-
-    #print(f"NDVI shape: {ndvi.shape}")
-    #print(f"PRI shape: {pri.shape}")
-    #print(f"CRI shape: {cri.shape}")
+    pri = calculate_pri(cube_reflectance)
+    cri = calculate_cri(cube_reflectance)
 
     y_middle = ndvi.shape[2] // 2
-    #show_index_map(ndvi, "NDVI", y=y_middle, cmap="RdYlGn", vmin=-1, vmax=1)
-    #show_index_map(pri, "PRI", y=y_middle, cmap="RdYlGn", vmin=-1, vmax=1)
-    #show_index_map(cri, "CRI", y=y_middle, cmap="viridis")
-    
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    reconstruct_rgb_image(cube_reflectance, out_path=os.path.join(current_dir, "rgb_image.png"), y=y_middle)
-    
-    visualise_spectrum_at(cube_reflectance, z=11, x=9, y=y_middle)
+
+    rgb_image, rgb_path = reconstruct_rgb_image(cube_reflectance, out_path=os.path.join(current_dir, "rgb_image.png"), y=y_middle)
+
+    # Step 1: create 2D plant mask from NDVI
+    ndvi_mask_2d = create_ndvi_mask(ndvi, threshold=0.35, y=y_middle)
+
+    # Step 2: show NDVI and mask
+    show_index_map(ndvi, "NDVI", y=y_middle, cmap="RdYlGn", vmin=-1, vmax=1)
+    show_mask(ndvi_mask_2d, title="NDVI plant mask")
+
+    # Step 3: overlay mask on RGB
+    overlay_mask_on_rgb(rgb_image, ndvi_mask_2d)
+
+    # Step 4: apply mask to 2D slices of PRI and CRI
+    pri_2d = pri[:, :, y_middle]
+    cri_2d = cri[:, :, y_middle]
+    ndvi_2d = ndvi[:, :, y_middle]
+
+    pri_masked = apply_mask_to_index(pri_2d, ndvi_mask_2d)
+    cri_masked = apply_mask_to_index(cri_2d, ndvi_mask_2d)
+    ndvi_masked = apply_mask_to_index(ndvi_2d, ndvi_mask_2d)
+  
+
+    # Step 5: show masked maps
+    plt.figure(figsize=(8, 6))
+    plt.imshow(pri_masked, cmap="RdYlGn", vmin=-1, vmax=1, aspect="auto")
+    plt.colorbar(label="PRI")
+    plt.title("Masked PRI")
+    plt.xlabel("X")
+    plt.ylabel("Z")
+    plt.tight_layout()
+    plt.show()
+
+    plt.figure(figsize=(8, 6))
+    plt.imshow(cri_masked, cmap="viridis", aspect="auto")
+    plt.colorbar(label="CRI")
+    plt.title("Masked CRI")
+    plt.xlabel("X")
+    plt.ylabel("Z")
+    plt.tight_layout()
+    plt.show()
+
+    # Step 6: summarize only plant pixels
+    summarize_masked_index(pri_masked, name="PRI masked")
+    summarize_masked_index(cri_masked, name="CRI masked")
+    summarize_masked_index(ndvi_masked, name="NDVI masked")
+
+    #visualise_spectrum_at(cube_reflectance, z=11, x=9, y=y_middle)
