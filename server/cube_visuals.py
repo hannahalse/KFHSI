@@ -1,7 +1,23 @@
-import numpy as np
+import os
+
+import cv2
 import matplotlib.pyplot as plt
+import numpy as np
 
 from indices import DEFAULT_BANDPASS_NM, gaussian_smooth_spectrum
+
+
+A = 0.7241145833
+B = 288.45625
+
+
+def px_to_nm(px):
+    return A * px + B
+
+
+def wavelength_axis(width):
+    pixels = np.arange(width)
+    return px_to_nm(pixels)
 
 def visualise_spectrum_at(cube, z, x, y):
     """
@@ -26,6 +42,100 @@ def visualise_spectrum_at(cube, z, x, y):
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.show()
+
+
+def extract_spectrum_from_raw_image(image_path, flip_x=True, wl_min=380.0, wl_max=820.0):
+    """
+    Read a raw grayscale image and extract its mean spectrum across image height.
+    The returned spectrum is clipped to the requested wavelength range.
+    """
+    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    if image is None:
+        raise RuntimeError(f"Could not read raw image: {image_path}")
+
+    image = image.astype(np.float32)
+    if flip_x:
+        image = np.fliplr(image)
+
+    spectrum = image.mean(axis=0)
+    wavs_nm = wavelength_axis(image.shape[1]).astype(np.float32)
+
+    mask = (wavs_nm >= wl_min) & (wavs_nm <= wl_max)
+    if not np.any(mask):
+        raise RuntimeError(
+            f"No wavelengths remain after clipping to {wl_min:.1f}-{wl_max:.1f} nm"
+        )
+
+    return wavs_nm[mask], spectrum[mask]
+
+
+def visualise_raw_image_spectrum(image_path, flip_x=True, wl_min=380.0, wl_max=820.0):
+    """
+    Extract and plot the mean spectrum from any raw grayscale image.
+    """
+    wavs_nm, spectrum = extract_spectrum_from_raw_image(
+        image_path,
+        flip_x=flip_x,
+        wl_min=wl_min,
+        wl_max=wl_max,
+    )
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(wavs_nm, spectrum, color="tab:blue")
+    plt.xlabel("Wavelength (nm)")
+    plt.ylabel("Intensity (a.u.)")
+    plt.title(
+        f"Raw image spectrum: {os.path.basename(image_path)} ({wl_min:.0f}-{wl_max:.0f} nm)"
+    )
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+    return wavs_nm, spectrum
+
+
+def visualise_white_dark_difference(
+    white_path,
+    dark_path,
+    flip_x=True,
+    wl_min=380.0,
+    wl_max=820.0,
+    plot=True,
+):
+    """
+    Plot the white-dark reference difference used as the radiometric denominator.
+    """
+    wavs_nm, white_spectrum = extract_spectrum_from_raw_image(
+        white_path,
+        flip_x=flip_x,
+        wl_min=wl_min,
+        wl_max=wl_max,
+    )
+    wavs_nm_dark, dark_spectrum = extract_spectrum_from_raw_image(
+        dark_path,
+        flip_x=flip_x,
+        wl_min=wl_min,
+        wl_max=wl_max,
+    )
+
+    if len(wavs_nm) != len(wavs_nm_dark) or not np.allclose(wavs_nm, wavs_nm_dark):
+        raise RuntimeError("White and dark spectra do not share the same wavelength axis")
+
+    denominator = white_spectrum - dark_spectrum
+
+    if plot:
+        plt.figure(figsize=(10, 6))
+        plt.plot(wavs_nm, denominator, color="tab:green")
+        plt.xlabel("Wavelength (nm)")
+        plt.ylabel("White - dark (a.u.)")
+        plt.title(
+            f"Reference denominator: {os.path.basename(white_path)} - {os.path.basename(dark_path)}"
+        )
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.show()
+
+    return wavs_nm, denominator, white_spectrum, dark_spectrum
 
 
 def visualise_spectrum_before_after_gaussian(cube, z, x, y, bandpass_nm=DEFAULT_BANDPASS_NM, out_path=None,):

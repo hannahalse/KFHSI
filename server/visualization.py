@@ -10,6 +10,8 @@ from cube_visuals import (
     visualise_wavelength_slice,
     reconstruct_rgb_image,
     visualise_spectrum_before_after_gaussian,
+    visualise_raw_image_spectrum,
+    visualise_white_dark_difference,
 )
 
 from indices import (
@@ -97,26 +99,12 @@ def extract_spectrum_from_raw(image_path, flip_x=True, plot=True):
 
 
 def plot_white_dark_difference(white_path, dark_path, flip_x=True, plot=False):
-    wavs, white_spec = extract_spectrum_from_raw(white_path, flip_x=flip_x)
-    _, dark_spec = extract_spectrum_from_raw(dark_path, flip_x=flip_x)
-
-    if len(white_spec) != len(dark_spec):
-        raise RuntimeError("White and dark spectra have different lengths.")
-
-    diff = white_spec - dark_spec
-
-    # Limit to relevant spectral area (380–820 nm)
-    mask = (wavs >= 380) & (wavs <= 820)
-
-    if plot:
-        plt.figure(figsize=(8, 5))
-        plt.plot(wavs[mask], diff[mask])
-        plt.xlabel("Wavelength (nm)")
-        plt.ylabel("Intensity difference (a.u.)")
-        plt.title("White minus dark spectrum (380–820 nm)")
-        plt.tight_layout()
-        plt.show()
-
+    wavs, diff, _, _ = visualise_white_dark_difference(
+        white_path,
+        dark_path,
+        flip_x=flip_x,
+        plot=plot,
+    )
     return wavs, diff
 
 
@@ -224,8 +212,8 @@ if __name__ == "__main__":
     
     current_dir = os.path.dirname(os.path.abspath(__file__))
     
-    cube_reflectance = radiometric_correct_cube(cube, white_path=white_path, dark_path=dark_path, flip_x=True)
-
+    #cube_reflectance = radiometric_correct_cube(cube, white_path=white_path, dark_path=dark_path, flip_x=True)
+    """
     ndvi = calculate_ndvi(cube_reflectance)
     pri = calculate_pri(cube_reflectance)
     cri = calculate_cri(cube_reflectance)
@@ -274,12 +262,15 @@ if __name__ == "__main__":
     plt.show()
 
     # Step 6: summarize only plant pixels
-    summarize_masked_index(pri_masked, name="PRI masked")
-    summarize_masked_index(cri_masked, name="CRI masked")
-    summarize_masked_index(ndvi_masked, name="NDVI masked")
-    
+    #summarize_masked_index(pri_masked, name="PRI masked")
+    #summarize_masked_index(cri_masked, name="CRI masked")
+    #summarize_masked_index(ndvi_masked, name="NDVI masked")
+    """
     #Step 7: Visualise spectrum before and after Gaussian smoothing for one pixel
-    visualise_spectrum_before_after_gaussian(cube_reflectance, z=28, x=8, y=y_middle,)
-    visualise_spectrum_at(cube_reflectance, z=28, x=8, y=y_middle)
+    #visualise_spectrum_before_after_gaussian(cube_reflectance, z=28, x=8, y=y_middle,)
+    #visualise_spectrum_at(cube_reflectance, z=28, x=8, y=y_middle)
+    visualise_raw_image_spectrum(dark_path, flip_x=True)
+    visualise_raw_image_spectrum(white_path, flip_x=True)
+    visualise_white_dark_difference(white_path, dark_path, flip_x=True, plot=True)
 
     #visualise_spectrum_at(cube_reflectance, z=11, x=9, y=y_middle)
