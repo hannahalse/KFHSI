@@ -9,6 +9,7 @@ from cube_visuals import (
     visualise_spectrum_at,
     visualise_wavelength_slice,
     reconstruct_rgb_image,
+    visualise_spectrum_before_after_gaussian,
 )
 
 from indices import (
@@ -29,7 +30,7 @@ from radiometric_calibration import (
 #KFHSI
 BASE_DIR      = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-scan_folder = os.path.join(BASE_DIR, "edge", "data", "scan_26March_12:29:35")  # Choose one specific folder for now
+scan_folder = os.path.join(BASE_DIR, "edge", "data", "scan_20April_07:58:03")  # Choose one specific folder for now
 npz_path = os.path.join(scan_folder, "cube_ZXnm_corrected.npz")
 
 data = np.load(npz_path)
@@ -276,5 +277,9 @@ if __name__ == "__main__":
     summarize_masked_index(pri_masked, name="PRI masked")
     summarize_masked_index(cri_masked, name="CRI masked")
     summarize_masked_index(ndvi_masked, name="NDVI masked")
+    
+    #Step 7: Visualise spectrum before and after Gaussian smoothing for one pixel
+    visualise_spectrum_before_after_gaussian(cube_reflectance, z=28, x=8, y=y_middle,)
+    visualise_spectrum_at(cube_reflectance, z=28, x=8, y=y_middle)
 
     #visualise_spectrum_at(cube_reflectance, z=11, x=9, y=y_middle)

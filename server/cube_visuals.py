@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from indices import DEFAULT_BANDPASS_NM, gaussian_smooth_spectrum
+
 def visualise_spectrum_at(cube, z, x, y):
     """
     Visualize spectrum from a specific position and row.
@@ -24,6 +26,34 @@ def visualise_spectrum_at(cube, z, x, y):
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.show()
+
+
+def visualise_spectrum_before_after_gaussian(cube, z, x, y, bandpass_nm=DEFAULT_BANDPASS_NM, out_path=None,):
+    """
+    Plot one pixel spectrum before and after Gaussian spectral smoothing.
+
+    The smoothing is applied only along the wavelength axis, so no spatial
+    neighbors are mixed into the spectrum.
+    """
+    raw_spectrum = np.asarray(cube[z, x, y, :], dtype=np.float32)
+    smoothed_spectrum = gaussian_smooth_spectrum(raw_spectrum, cube.wavs_nm, bandpass_nm=bandpass_nm,)
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(cube.wavs_nm, raw_spectrum, label="Original spectrum", color="tab:blue", alpha=0.6,)
+    plt.plot(cube.wavs_nm, smoothed_spectrum, label=f"Gaussian-smoothed ({bandpass_nm:.1f} nm FWHM)", color="tab:orange", linewidth=2.0,)
+    plt.xlabel("Wavelength (nm)")
+    plt.ylabel("Intensity")
+    plt.title(f"Spectrum at position (Z={z}, X={x}, Y={y})")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+
+    if out_path is not None:
+        plt.savefig(out_path, dpi=200)
+        plt.close()
+        print(f"Spectrum comparison saved to {out_path}")
+    else:
+        plt.show()
 
 
 def visualise_wavelength_slice(cube, wavelength_nm, out_path, y=None, aggregate="mean"):

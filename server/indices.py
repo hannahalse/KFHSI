@@ -1,10 +1,5 @@
 import numpy as np
 
-#TODO: Currently OK, but calculates the NDVI for the whole 2D image. For later: see if I can implement PCA to remove background/soil. 
-#TODO: Add function for black and white references. Maybe not in this file but in general. 
-#TODO: Find which CRI variant I use (CRI1, CRI2) 
-#TODO: make to reflectance not raw intensity. 
-
 EPS = 1e-6
 DEFAULT_BANDPASS_NM = 5.0
 GAUSSIAN_CUTOFF_SIGMA = 3.0
@@ -46,6 +41,41 @@ def _gaussian_weighted_band(cube, target_nm, bandpass_nm=DEFAULT_BANDPASS_NM) ->
 
     weighted_band = np.tensordot(cube_data[:, :, :, mask], weights, axes=([-1], [0]))
     return weighted_band.astype(np.float32)
+
+
+def gaussian_smooth_spectrum(spectrum, wavs_nm, bandpass_nm=DEFAULT_BANDPASS_NM) -> np.ndarray:
+    """
+    Smooth a single spectrum with the same Gaussian bandpass model used for index extraction.
+
+    This is useful for visualizing what the 5 nm optical response does to one
+    pixel spectrum without mixing any spatial neighbors.
+    """
+    if bandpass_nm <= 0:
+        raise ValueError("bandpass_nm must be > 0")
+
+    spectrum = np.asarray(spectrum, dtype=np.float32)
+    wavs_nm = np.asarray(wavs_nm, dtype=np.float32)
+
+    if spectrum.ndim != 1 or wavs_nm.ndim != 1:
+        raise ValueError("spectrum and wavs_nm must both be 1D arrays")
+    if len(spectrum) != len(wavs_nm):
+        raise ValueError("spectrum and wavs_nm must have the same length")
+
+    sigma_nm = float(bandpass_nm) / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+    cutoff_nm = GAUSSIAN_CUTOFF_SIGMA * sigma_nm
+    smoothed = np.empty_like(spectrum, dtype=np.float32)
+
+    for idx, center_nm in enumerate(wavs_nm):
+        distances_nm = wavs_nm - center_nm
+        mask = np.abs(distances_nm) <= cutoff_nm
+
+        local_distances = distances_nm[mask]
+        local_weights = np.exp(-0.5 * (local_distances / sigma_nm) ** 2).astype(np.float32)
+        local_weights /= np.sum(local_weights)
+
+        smoothed[idx] = np.dot(spectrum[mask], local_weights)
+
+    return smoothed
 
 
 def calculate_ndvi(cube, bandpass_nm=DEFAULT_BANDPASS_NM) -> np.ndarray:
