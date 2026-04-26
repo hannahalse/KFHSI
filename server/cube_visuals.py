@@ -19,25 +19,37 @@ def wavelength_axis(width):
     pixels = np.arange(width)
     return px_to_nm(pixels)
 
-def visualise_spectrum_at(cube, z, x, y):
+def visualise_spectrum_at(cube, z, x, y, bandpass_nm=DEFAULT_BANDPASS_NM):
     """
-    Visualize spectrum from a specific position and row.
+    Visualize the Gaussian-smoothed spectrum from a specific position and row.
     
     Parameters:
         cube: CubeNM object with shape (Z, X, Y, W)
         z: Z position
         x: X position  
         y: Y position (row number in the image)
+        bandpass_nm: Gaussian smoothing bandpass in nm
     """
-    spec = cube[z, x, y, :]  # One spectrum from a specific (Z, X, Y)
+    raw_spectrum = np.asarray(cube[z, x, y, :], dtype=np.float32)
+    smoothed_spectrum = gaussian_smooth_spectrum(
+        raw_spectrum,
+        cube.wavs_nm,
+        bandpass_nm=bandpass_nm,
+    )
+
     print(f"Cube shape: {cube.shape}")
-    print(f"Spectrum at Z={z}, X={x}, Y={y}:")
+    print(f"Spectrum at Z={z}, X={x}, Y={y} (Gaussian-smoothed, {bandpass_nm:.1f} nm FWHM):")
     
     plt.figure(figsize=(10, 6))
-    plt.plot(cube.wavs_nm, spec, label=f'Z={z}, X={x}, Y-row={y}')
+    plt.plot(
+        cube.wavs_nm,
+        smoothed_spectrum,
+        label=f"Z={z}, X={x}, Y-row={y}",
+        color="tab:blue",
+    )
     plt.xlabel("Wavelength (nm)")
     plt.ylabel("Intensity")
-    plt.title(f"Spectrum at position (Z={z}, X={x}, Y={y})")
+    plt.title(f"Smoothed spectrum at position (Z={z}, X={x}, Y={y})")
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.tight_layout()

@@ -32,13 +32,13 @@ from radiometric_calibration import (
 #KFHSI
 BASE_DIR      = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-scan_folder = os.path.join(BASE_DIR, "edge", "data", "scan_20April_07:58:03")  # Choose one specific folder for now
+scan_folder = os.path.join(BASE_DIR, "edge", "data", "scan_24April_08:11:29")  # Choose one specific folder for now
 npz_path = os.path.join(scan_folder, "cube_ZXnm_corrected.npz")
 
 data = np.load(npz_path)
 cube = CubeNM(data["cube"], data["wavs_nm"])
 
-white_path = os.path.join(BASE_DIR, "server", "whiteReference.png")
+white_path = os.path.join(BASE_DIR, "server", "whiteReferenceInChamber20W.png")
 dark_path = os.path.join(BASE_DIR, "server", "darkReference.png")
 
 
@@ -211,15 +211,14 @@ def overlay_mask_on_rgb(rgb_image, mask_2d, alpha=0.35):
 if __name__ == "__main__":
     
     current_dir = os.path.dirname(os.path.abspath(__file__))
+    cube_reflectance = radiometric_correct_cube(cube, white_path=white_path, dark_path=dark_path, flip_x=True)
     
-    #cube_reflectance = radiometric_correct_cube(cube, white_path=white_path, dark_path=dark_path, flip_x=True)
-    """
     ndvi = calculate_ndvi(cube_reflectance)
     pri = calculate_pri(cube_reflectance)
     cri = calculate_cri(cube_reflectance)
 
     y_middle = ndvi.shape[2] // 2
-
+    
     rgb_image, rgb_path = reconstruct_rgb_image(cube_reflectance, out_path=os.path.join(current_dir, "rgb_image.png"), y=y_middle)
 
     # Step 1: create 2D plant mask from NDVI
@@ -262,15 +261,16 @@ if __name__ == "__main__":
     plt.show()
 
     # Step 6: summarize only plant pixels
-    #summarize_masked_index(pri_masked, name="PRI masked")
-    #summarize_masked_index(cri_masked, name="CRI masked")
-    #summarize_masked_index(ndvi_masked, name="NDVI masked")
-    """
+    summarize_masked_index(pri_masked, name="PRI masked")
+    summarize_masked_index(cri_masked, name="CRI masked")
+    summarize_masked_index(ndvi_masked, name="NDVI masked")
+    
     #Step 7: Visualise spectrum before and after Gaussian smoothing for one pixel
-    #visualise_spectrum_before_after_gaussian(cube_reflectance, z=28, x=8, y=y_middle,)
-    #visualise_spectrum_at(cube_reflectance, z=28, x=8, y=y_middle)
-    visualise_raw_image_spectrum(dark_path, flip_x=True)
-    visualise_raw_image_spectrum(white_path, flip_x=True)
-    visualise_white_dark_difference(white_path, dark_path, flip_x=True, plot=True)
+    visualise_spectrum_before_after_gaussian(cube_reflectance, z=28, x=11, y=y_middle,)
+    visualise_spectrum_at(cube_reflectance, z=28, x=11, y=y_middle)
+    #visualise_raw_image_spectrum(dark_path, flip_x=True)
+    #visualise_raw_image_spectrum(white_path, flip_x=True)
+    #visualise_raw_image_spectrum(dark_path, flip_x=True)
+    #visualise_white_dark_difference(white_path, dark_path, flip_x=True, plot=True)
 
-    #visualise_spectrum_at(cube_reflectance, z=11, x=9, y=y_middle)
+

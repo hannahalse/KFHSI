@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 import sys
 
-filename = "SpectraPenData_20W_HalogenBulb.spec"  
+filename = "SpectraPenDataSameLocNoCamera.spec"  
 #filename = sys.argv[1]   # f.eks SpectraPenData_450nmLC.spec
 
 with open(filename, "rb") as f:
@@ -137,7 +137,7 @@ plt.plot(wavelength, values)
 plt.xlabel("Wavelength (nm)")
 plt.ylabel("Intensity")
 
-plt.title("Spectrum from 20 W halogen bulb.")
+plt.title("Spectrum, same location, but no camera")
 
 plt.show()
 

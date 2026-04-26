@@ -5,6 +5,9 @@ import cv2
 from Generate_cube import CubeNM
 
 EPS = 1e-6
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DEFAULT_WHITE_PATH = os.path.join(BASE_DIR, "server", "whiteReferenceInChamber10W.png")
+DEFAULT_DARK_PATH = os.path.join(BASE_DIR, "server", "darkReference1.png")
 
 # Samme kalibrering som i resten av prosjektet - Får ikke til å importere. 
 A = 0.7241145833
@@ -62,7 +65,14 @@ def clip_reference_to_cube_wavelengths(reference_image, cube_wavs_nm):
 
     return clipped_reference
 
-def radiometric_correct_cube(cube, white_path, dark_path, flip_x=True, clip_min=0.0, clip_max=2.0):
+def radiometric_correct_cube(
+    cube,
+    white_path=DEFAULT_WHITE_PATH,
+    dark_path=DEFAULT_DARK_PATH,
+    flip_x=True,
+    clip_min=0.0,
+    clip_max=2.0,
+):
     """
     Apply radiometric correction to a hyperspectral cube using raw white and dark references.
 
@@ -107,6 +117,8 @@ def radiometric_correct_cube(cube, white_path, dark_path, flip_x=True, clip_min=
 
     corrected_cube = CubeNM(corrected_data, cube.wavs_nm.copy())
 
+    print(f"[INFO] Using white reference: {white_path}")
+    print(f"[INFO] Using dark reference: {dark_path}")
     print(f"[INFO] Radiometric correction complete. Corrected cube shape: {corrected_cube.shape}")
     print(f"[INFO] Corrected cube min={np.nanmin(corrected_data):.4f}, max={np.nanmax(corrected_data):.4f}, mean={np.nanmean(corrected_data):.4f}")
 
