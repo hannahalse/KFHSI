@@ -41,6 +41,14 @@ cube = CubeNM(data["cube"], data["wavs_nm"])
 white_path = os.path.join(BASE_DIR, "server", "whiteReferenceInChamber20W.png")
 dark_path = os.path.join(BASE_DIR, "server", "darkReference.png")
 
+# How to collapse the Y dimension when making 2D maps/RGB views.
+# Options:
+#   "slice"             -> use one Y row
+#   "mean"              -> average over all Y rows
+#   "central_band_mean" -> average over a central Y band
+Y_REDUCTION_MODE = "central_band_mean"
+Y_BAND_HALF_HEIGHT = 20
+
 
 # -------- Calibration --------
 A = 0.7241145833
@@ -108,46 +116,124 @@ def plot_white_dark_difference(white_path, dark_path, flip_x=True, plot=False):
     return wavs, diff
 
 
-def show_index_map(index_data, name, y=None, cmap="RdYlGn", vmin=None, vmax=None):
+def get_central_y_band(y_size, center_y=None, half_height=20):
+    if center_y is None:
+        center_y = y_size // 2
+    y0 = max(0, int(center_y) - int(half_height))
+    y1 = min(y_size, int(center_y) + int(half_height) + 1)
+    if y1 <= y0:
+        raise ValueError(f"Invalid Y band: ({y0}, {y1})")
+    return y0, y1
+
+
+def reduce_y_dimension(volume, mode="slice", y=None, band_half_height=20):
+    """
+    Reduce a (Z, X, Y) volume to a (Z, X) map for visualization/summary.
+    """
+    if volume.ndim == 2:
+        return volume, "2D map"
+    if volume.ndim != 3:
+        raise ValueError(f"Expected 2D or 3D data, got shape {volume.shape}")
+
+    y_size = volume.shape[2]
+    y_middle = y_size // 2 if y is None else int(y)
+
+    if mode == "slice":
+        reduced = volume[:, :, y_middle]
+        label = f"y={y_middle}"
+    elif mode == "mean":
+        reduced = np.nanmean(volume, axis=2)
+        label = "mean over all Y"
+    elif mode == "central_band_mean":
+        y0, y1 = get_central_y_band(y_size, center_y=y_middle, half_height=band_half_height)
+        reduced = np.nanmean(volume[:, :, y0:y1], axis=2)
+        label = f"mean over y={y0}:{y1}"
+    else:
+        raise ValueError(f"Unsupported Y reduction mode: {mode}")
+
+    return reduced, label
+
+
+def summarize_index_volume(index_data, name="Index"):
+    """
+    Print summary statistics for the full 3D index volume before any Y reduction.
+    """
+    print(f"{name} full cube min:  {np.nanmin(index_data):.4f}")
+    print(f"{name} full cube max:  {np.nanmax(index_data):.4f}")
+    print(f"{name} full cube mean: {np.nanmean(index_data):.4f}")
+    print(f"{name} full cube std:  {np.nanstd(index_data):.4f}")
+
+
+def create_ndvi_mask_3d(ndvi, threshold=0.35):
+    """
+    Create a full 3D plant mask from NDVI with shape (Z, X, Y).
+    """
+    if ndvi.ndim != 3:
+        raise ValueError(f"Expected NDVI volume with shape (Z, X, Y), got {ndvi.shape}")
+    return ndvi > threshold
+
+
+def summarize_masked_index_volume(index_data, mask_3d, name="Index"):
+    """
+    Print summary statistics for a full 3D index volume after applying a 3D mask.
+    """
+    if index_data.shape != mask_3d.shape:
+        raise ValueError(
+            f"index_data and mask_3d must have the same shape, got {index_data.shape} and {mask_3d.shape}"
+        )
+
+    masked = np.where(mask_3d, index_data, np.nan)
+    print(f"{name} plant-only full cube min:  {np.nanmin(masked):.4f}")
+    print(f"{name} plant-only full cube max:  {np.nanmax(masked):.4f}")
+    print(f"{name} plant-only full cube mean: {np.nanmean(masked):.4f}")
+    print(f"{name} plant-only full cube std:  {np.nanstd(masked):.4f}")
+    return masked
+
+
+def show_index_map(index_data, name, y_mode="slice", y=None, band_half_height=20, cmap="RdYlGn", vmin=None, vmax=None):
     """
     Show a 2D map from a 3D spectral index array with shape (Z, X, Y).
     """
-    if y is None:
-        y = index_data.shape[2] // 2
-
-    index_map = index_data[:, :, y]
+    index_map, y_label = reduce_y_dimension(
+        index_data,
+        mode=y_mode,
+        y=y,
+        band_half_height=band_half_height,
+    )
 
     plt.figure(figsize=(8, 6))
     plt.imshow(index_map, cmap=cmap, vmin=vmin, vmax=vmax, aspect="auto")
     plt.colorbar(label=name)
-    plt.title(f"{name} map at y={y}")
+    plt.title(f"{name} map ({y_label})")
     plt.xlabel("X")
     plt.ylabel("Z")
     plt.tight_layout()
     plt.show()
 
-    print(f"{name} min: {np.nanmin(index_data):.4f}")
-    print(f"{name} max: {np.nanmax(index_data):.4f}")
-    print(f"{name} mean: {np.nanmean(index_data):.4f}")
+    print(f"{name} reduced map ({y_label}) min:  {np.nanmin(index_map):.4f}")
+    print(f"{name} reduced map ({y_label}) max:  {np.nanmax(index_map):.4f}")
+    print(f"{name} reduced map ({y_label}) mean: {np.nanmean(index_map):.4f}")
+    return index_map
 
-def create_ndvi_mask(ndvi, threshold=0.35, y=None):
+
+def create_ndvi_mask(ndvi, threshold=0.35, y_mode="slice", y=None, band_half_height=20):
     """
     Create binary plant mask from NDVI.
 
     Parameters:
-        ndvi: ndarray with shape (Z, X, Y)
+        ndvi: ndarray with shape (Z, X, Y) or already reduced (Z, X)
         threshold: NDVI threshold for plant segmentation
-        y: if not None, return only one 2D slice (Z, X)
 
     Returns:
-        mask: boolean ndarray
+        mask: boolean 2D ndarray with shape (Z, X)
     """
-    mask = ndvi > threshold
-
-    if y is not None:
-        return mask[:, :, y]
-
-    return mask
+    ndvi_2d, _ = reduce_y_dimension(
+        ndvi,
+        mode=y_mode,
+        y=y,
+        band_half_height=band_half_height,
+    )
+    return ndvi_2d > threshold
 
 
 def apply_mask_to_index(index_data, mask):
@@ -217,25 +303,93 @@ if __name__ == "__main__":
     pri = calculate_pri(cube_reflectance)
     cri = calculate_cri(cube_reflectance)
 
+    summarize_index_volume(ndvi, name="NDVI")
+    summarize_index_volume(pri, name="PRI")
+    summarize_index_volume(cri, name="CRI")
+
+    plant_mask_3d = create_ndvi_mask_3d(ndvi, threshold=0.35)
+    summarize_masked_index_volume(ndvi, plant_mask_3d, name="NDVI")
+    summarize_masked_index_volume(pri, plant_mask_3d, name="PRI")
+    summarize_masked_index_volume(cri, plant_mask_3d, name="CRI")
+
     y_middle = ndvi.shape[2] // 2
-    
-    rgb_image, rgb_path = reconstruct_rgb_image(cube_reflectance, out_path=os.path.join(current_dir, "rgb_image.png"), y=y_middle)
+
+    if Y_REDUCTION_MODE == "slice":
+        rgb_image, rgb_path = reconstruct_rgb_image(
+            cube_reflectance,
+            out_path=os.path.join(current_dir, "rgb_image.png"),
+            y=y_middle,
+        )
+    elif Y_REDUCTION_MODE == "mean":
+        rgb_image, rgb_path = reconstruct_rgb_image(
+            cube_reflectance,
+            out_path=os.path.join(current_dir, "rgb_image.png"),
+            y=None,
+            aggregate="mean",
+        )
+    elif Y_REDUCTION_MODE == "central_band_mean":
+        y_range = get_central_y_band(
+            ndvi.shape[2],
+            center_y=y_middle,
+            half_height=Y_BAND_HALF_HEIGHT,
+        )
+        rgb_image, rgb_path = reconstruct_rgb_image(
+            cube_reflectance,
+            out_path=os.path.join(current_dir, "rgb_image.png"),
+            y=None,
+            y_range=y_range,
+            aggregate="mean",
+        )
+    else:
+        raise ValueError(f"Unsupported Y reduction mode: {Y_REDUCTION_MODE}")
 
     # Step 1: create 2D plant mask from NDVI
-    ndvi_mask_2d = create_ndvi_mask(ndvi, threshold=0.35, y=y_middle)
+    ndvi_2d, ndvi_label = reduce_y_dimension(
+        ndvi,
+        mode=Y_REDUCTION_MODE,
+        y=y_middle,
+        band_half_height=Y_BAND_HALF_HEIGHT,
+    )
+    pri_2d, _ = reduce_y_dimension(
+        pri,
+        mode=Y_REDUCTION_MODE,
+        y=y_middle,
+        band_half_height=Y_BAND_HALF_HEIGHT,
+    )
+    cri_2d, _ = reduce_y_dimension(
+        cri,
+        mode=Y_REDUCTION_MODE,
+        y=y_middle,
+        band_half_height=Y_BAND_HALF_HEIGHT,
+    )
+
+    ndvi_mask_2d = create_ndvi_mask(
+        ndvi,
+        threshold=0.35,
+        y_mode=Y_REDUCTION_MODE,
+        y=y_middle,
+        band_half_height=Y_BAND_HALF_HEIGHT,
+    )
+
+    print(f"Visualization Y reduction: {ndvi_label}")
 
     # Step 2: show NDVI and mask
-    show_index_map(ndvi, "NDVI", y=y_middle, cmap="RdYlGn", vmin=-1, vmax=1)
-    show_mask(ndvi_mask_2d, title="NDVI plant mask")
+    show_index_map(
+        ndvi,
+        "NDVI",
+        y_mode=Y_REDUCTION_MODE,
+        y=y_middle,
+        band_half_height=Y_BAND_HALF_HEIGHT,
+        cmap="RdYlGn",
+        vmin=-1,
+        vmax=1,
+    )
+    show_mask(ndvi_mask_2d, title=f"NDVI plant mask ({ndvi_label})")
 
     # Step 3: overlay mask on RGB
     overlay_mask_on_rgb(rgb_image, ndvi_mask_2d)
 
     # Step 4: apply mask to 2D slices of PRI and CRI
-    pri_2d = pri[:, :, y_middle]
-    cri_2d = cri[:, :, y_middle]
-    ndvi_2d = ndvi[:, :, y_middle]
-
     pri_masked = apply_mask_to_index(pri_2d, ndvi_mask_2d)
     cri_masked = apply_mask_to_index(cri_2d, ndvi_mask_2d)
     ndvi_masked = apply_mask_to_index(ndvi_2d, ndvi_mask_2d)
@@ -245,7 +399,7 @@ if __name__ == "__main__":
     plt.figure(figsize=(8, 6))
     plt.imshow(pri_masked, cmap="RdYlGn", vmin=-1, vmax=1, aspect="auto")
     plt.colorbar(label="PRI")
-    plt.title("Masked PRI")
+    plt.title(f"Masked PRI ({ndvi_label})")
     plt.xlabel("X")
     plt.ylabel("Z")
     plt.tight_layout()
@@ -254,16 +408,16 @@ if __name__ == "__main__":
     plt.figure(figsize=(8, 6))
     plt.imshow(cri_masked, cmap="viridis", aspect="auto")
     plt.colorbar(label="CRI")
-    plt.title("Masked CRI")
+    plt.title(f"Masked CRI ({ndvi_label})")
     plt.xlabel("X")
     plt.ylabel("Z")
     plt.tight_layout()
     plt.show()
 
     # Step 6: summarize only plant pixels
-    summarize_masked_index(pri_masked, name="PRI masked")
-    summarize_masked_index(cri_masked, name="CRI masked")
-    summarize_masked_index(ndvi_masked, name="NDVI masked")
+    summarize_masked_index(pri_masked, name=f"PRI masked ({ndvi_label})")
+    summarize_masked_index(cri_masked, name=f"CRI masked ({ndvi_label})")
+    summarize_masked_index(ndvi_masked, name=f"NDVI masked ({ndvi_label})")
     
     #Step 7: Visualise spectrum before and after Gaussian smoothing for one pixel
     visualise_spectrum_before_after_gaussian(cube_reflectance, z=28, x=11, y=y_middle,)
@@ -272,5 +426,3 @@ if __name__ == "__main__":
     #visualise_raw_image_spectrum(white_path, flip_x=True)
     #visualise_raw_image_spectrum(dark_path, flip_x=True)
     #visualise_white_dark_difference(white_path, dark_path, flip_x=True, plot=True)
-
-

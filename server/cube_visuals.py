@@ -218,7 +218,7 @@ def visualise_wavelength_slice(cube, wavelength_nm, out_path, y=None, aggregate=
 
     print(f"Wavelength ~{float(wavelength_nm):.1f} nm saved to {out_path}")
     
-def reconstruct_rgb_image(cube, out_path, y=None, aggregate="mean"):
+def reconstruct_rgb_image(cube, out_path, y=None, y_range=None, aggregate="mean"):
     """
     Reconstruct and save an RGB image from the cube using specific wavelengths for R, G, B.
 
@@ -226,7 +226,7 @@ def reconstruct_rgb_image(cube, out_path, y=None, aggregate="mean"):
         cube: CubeNM object with shape (Z, X, Y, W)
         out_path: full path to where the RGB PNG should be saved
         y: if not None -> use this Y-row (int) to build the image (Z, X, 3)
-           if None     -> reduce over Y using 'aggregate' (e.g. mean)
+        y_range: optional tuple (y0, y1) for aggregating only a Y subrange
         aggregate: how to reduce over Y if y is None ("mean" supported)
 
     Returns:
@@ -271,6 +271,12 @@ def reconstruct_rgb_image(cube, out_path, y=None, aggregate="mean"):
         b2 = b_norm[:, :, y]
     else:
         # Aggregate over Y
+        if y_range is not None:
+            y0, y1 = int(y_range[0]), int(y_range[1])
+            r_norm = r_norm[:, :, y0:y1]
+            g_norm = g_norm[:, :, y0:y1]
+            b_norm = b_norm[:, :, y0:y1]
+
         if aggregate == "mean":
             r2 = r_norm.mean(axis=2)
             g2 = g_norm.mean(axis=2)
