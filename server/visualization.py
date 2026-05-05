@@ -1,3 +1,4 @@
+import csv
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -31,14 +32,15 @@ from radiometric_calibration import (
 
 #KFHSI
 BASE_DIR      = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DATA_DIR = os.path.join(BASE_DIR, "edge", "data")
 
-scan_folder = os.path.join(BASE_DIR, "edge", "data", "scan_24April_08:11:29")  # Choose one specific folder for now
+scan_folder = os.path.join(DATA_DIR, "scan_30April_09:46:32")  # Choose one specific folder for now
 npz_path = os.path.join(scan_folder, "cube_ZXnm_corrected.npz")
 
 data = np.load(npz_path)
 cube = CubeNM(data["cube"], data["wavs_nm"])
 
-white_path = os.path.join(BASE_DIR, "server", "whiteReferenceInChamber20W.png")
+white_path = os.path.join(BASE_DIR, "server", "whiteReferenceInChamber10W.png")
 dark_path = os.path.join(BASE_DIR, "server", "darkReference.png")
 
 # How to collapse the Y dimension when making 2D maps/RGB views.
@@ -48,6 +50,10 @@ dark_path = os.path.join(BASE_DIR, "server", "darkReference.png")
 #   "central_band_mean" -> average over a central Y band
 Y_REDUCTION_MODE = "central_band_mean"
 Y_BAND_HALF_HEIGHT = 20
+NDVI_MASK_THRESHOLD = 0.35
+APPEND_TO_MASTER_CSV = True
+MASTER_SUMMARY_CSV = os.path.join(DATA_DIR, "masked_index_time_series.csv")
+REPLACE_EXISTING_SCAN_ROW = True
 
 
 # -------- Calibration --------
@@ -173,6 +179,40 @@ def create_ndvi_mask_3d(ndvi, threshold=0.35):
     return ndvi > threshold
 
 
+def summarize_mask_3d(mask_3d, name="Plant mask"):
+    """
+    Print coverage statistics for a full 3D boolean mask.
+    """
+    if mask_3d.ndim != 3:
+        raise ValueError(f"Expected 3D mask with shape (Z, X, Y), got {mask_3d.shape}")
+
+    pixel_count = int(np.count_nonzero(mask_3d))
+    total_count = int(mask_3d.size)
+    coverage_pct = 100.0 * pixel_count / total_count if total_count else 0.0
+
+    print(f"{name} full cube pixel count: {pixel_count}")
+    print(f"{name} full cube coverage:    {coverage_pct:.2f}%")
+
+
+def summarize_mask_2d(mask_2d, name="Plant mask"):
+    """
+    Print coverage statistics for a 2D boolean mask.
+    """
+    if mask_2d.ndim != 2:
+        raise ValueError(f"Expected 2D mask with shape (Z, X), got {mask_2d.shape}")
+
+    pixel_count = int(np.count_nonzero(mask_2d))
+    total_count = int(mask_2d.size)
+    coverage_pct = 100.0 * pixel_count / total_count if total_count else 0.0
+
+    print(f"{name} pixel count: {pixel_count}")
+    print(f"{name} coverage:    {coverage_pct:.2f}%")
+    return {
+        "pixel_count": pixel_count,
+        "coverage_pct": coverage_pct,
+    }
+
+
 def summarize_masked_index_volume(index_data, mask_3d, name="Index"):
     """
     Print summary statistics for a full 3D index volume after applying a 3D mask.
@@ -183,10 +223,10 @@ def summarize_masked_index_volume(index_data, mask_3d, name="Index"):
         )
 
     masked = np.where(mask_3d, index_data, np.nan)
-    print(f"{name} plant-only full cube min:  {np.nanmin(masked):.4f}")
-    print(f"{name} plant-only full cube max:  {np.nanmax(masked):.4f}")
-    print(f"{name} plant-only full cube mean: {np.nanmean(masked):.4f}")
-    print(f"{name} plant-only full cube std:  {np.nanstd(masked):.4f}")
+    #print(f"{name} plant-only full cube min:  {np.nanmin(masked):.4f}")
+    #print(f"{name} plant-only full cube max:  {np.nanmax(masked):.4f}")
+    #print(f"{name} plant-only full cube mean: {np.nanmean(masked):.4f}")
+    #print(f"{name} plant-only full cube std:  {np.nanstd(masked):.4f}")
     return masked
 
 
@@ -210,9 +250,9 @@ def show_index_map(index_data, name, y_mode="slice", y=None, band_half_height=20
     plt.tight_layout()
     plt.show()
 
-    print(f"{name} reduced map ({y_label}) min:  {np.nanmin(index_map):.4f}")
-    print(f"{name} reduced map ({y_label}) max:  {np.nanmax(index_map):.4f}")
-    print(f"{name} reduced map ({y_label}) mean: {np.nanmean(index_map):.4f}")
+    #print(f"{name} reduced map ({y_label}) min:  {np.nanmin(index_map):.4f}")
+    #print(f"{name} reduced map ({y_label}) max:  {np.nanmax(index_map):.4f}")
+    #print(f"{name} reduced map ({y_label}) mean: {np.nanmean(index_map):.4f}")
     return index_map
 
 
@@ -251,10 +291,119 @@ def summarize_masked_index(index_data, name="Index"):
     Print summary statistics for masked index data.
     Assumes background is NaN.
     """
-    print(f"{name} min:  {np.nanmin(index_data):.4f}")
-    print(f"{name} max:  {np.nanmax(index_data):.4f}")
-    print(f"{name} mean: {np.nanmean(index_data):.4f}")
-    print(f"{name} std:  {np.nanstd(index_data):.4f}")
+    values = np.asarray(index_data[np.isfinite(index_data)], dtype=np.float32)
+    valid_count = int(values.size)
+
+    if valid_count == 0:
+        print(f"{name} has no valid plant pixels")
+        return {
+            "valid_pixel_count": 0,
+            "mean": np.nan,
+            "median": np.nan,
+            "std": np.nan,
+        }
+
+    mean_value = float(np.mean(values))
+    median_value = float(np.median(values))
+    std_value = float(np.std(values))
+
+    print(f"{name} valid pixel count: {valid_count}")
+    print(f"{name} mean:              {mean_value:.4f}")
+    print(f"{name} median:            {median_value:.4f}")
+    print(f"{name} std:               {std_value:.4f}")
+    return {
+        "valid_pixel_count": valid_count,
+        "mean": mean_value,
+        "median": median_value,
+        "std": std_value,
+    }
+
+
+def update_master_summary_csv(
+    csv_path,
+    scan_folder,
+    y_label,
+    mask_summary,
+    index_summaries,
+    y_reduction_mode,
+    y_band_half_height,
+    ndvi_threshold,
+    white_path,
+    dark_path,
+    replace_existing_scan_row=True,
+):
+    """
+    Save thesis-facing masked index summaries to one master CSV with one row per scan.
+    """
+    fieldnames = [
+        "scan_name",
+        "scan_folder",
+        "analysis_y_reduction",
+        "y_reduction_mode",
+        "y_band_half_height",
+        "ndvi_mask_threshold",
+        "white_reference",
+        "dark_reference",
+        "mask_pixel_count",
+        "mask_coverage_pct",
+        "pri_valid_pixel_count",
+        "pri_mean",
+        "pri_median",
+        "pri_std",
+        "cri_valid_pixel_count",
+        "cri_mean",
+        "cri_median",
+        "cri_std",
+        "ndvi_valid_pixel_count",
+        "ndvi_mean",
+        "ndvi_median",
+        "ndvi_std",
+    ]
+
+    row = {
+        "scan_name": os.path.basename(scan_folder),
+        "scan_folder": scan_folder,
+        "analysis_y_reduction": y_label,
+        "y_reduction_mode": y_reduction_mode,
+        "y_band_half_height": y_band_half_height,
+        "ndvi_mask_threshold": ndvi_threshold,
+        "white_reference": os.path.basename(white_path),
+        "dark_reference": os.path.basename(dark_path),
+        "mask_pixel_count": mask_summary["pixel_count"],
+        "mask_coverage_pct": mask_summary["coverage_pct"],
+        "pri_valid_pixel_count": index_summaries["PRI"]["valid_pixel_count"],
+        "pri_mean": index_summaries["PRI"]["mean"],
+        "pri_median": index_summaries["PRI"]["median"],
+        "pri_std": index_summaries["PRI"]["std"],
+        "cri_valid_pixel_count": index_summaries["CRI"]["valid_pixel_count"],
+        "cri_mean": index_summaries["CRI"]["mean"],
+        "cri_median": index_summaries["CRI"]["median"],
+        "cri_std": index_summaries["CRI"]["std"],
+        "ndvi_valid_pixel_count": index_summaries["NDVI"]["valid_pixel_count"],
+        "ndvi_mean": index_summaries["NDVI"]["mean"],
+        "ndvi_median": index_summaries["NDVI"]["median"],
+        "ndvi_std": index_summaries["NDVI"]["std"],
+    }
+
+    os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+
+    existing_rows = []
+    if os.path.exists(csv_path):
+        with open(csv_path, "r", newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            existing_rows = list(reader)
+
+    if replace_existing_scan_row:
+        existing_rows = [existing_row for existing_row in existing_rows if existing_row.get("scan_folder") != scan_folder]
+
+    existing_rows.append(row)
+
+    with open(csv_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(existing_rows)
+
+    print(f"Master index summary CSV updated: {csv_path}")
 
 
 def show_mask(mask_2d, title="Plant mask"):
@@ -302,15 +451,16 @@ if __name__ == "__main__":
     ndvi = calculate_ndvi(cube_reflectance)
     pri = calculate_pri(cube_reflectance)
     cri = calculate_cri(cube_reflectance)
-
-    summarize_index_volume(ndvi, name="NDVI")
-    summarize_index_volume(pri, name="PRI")
-    summarize_index_volume(cri, name="CRI")
-
-    plant_mask_3d = create_ndvi_mask_3d(ndvi, threshold=0.35)
-    summarize_masked_index_volume(ndvi, plant_mask_3d, name="NDVI")
-    summarize_masked_index_volume(pri, plant_mask_3d, name="PRI")
-    summarize_masked_index_volume(cri, plant_mask_3d, name="CRI")
+    
+    # Supplementary whole-cube summaries are left here commented out.
+    # summarize_index_volume(ndvi, name="NDVI")
+    # summarize_index_volume(pri, name="PRI")
+    # summarize_index_volume(cri, name="CRI")
+    # plant_mask_3d = create_ndvi_mask_3d(ndvi, threshold=0.35)
+    # summarize_mask_3d(plant_mask_3d, name="NDVI plant mask")
+    # summarize_masked_index_volume(ndvi, plant_mask_3d, name="NDVI")
+    # summarize_masked_index_volume(pri, plant_mask_3d, name="PRI")
+    # summarize_masked_index_volume(cri, plant_mask_3d, name="CRI")
 
     y_middle = ndvi.shape[2] // 2
 
@@ -365,13 +515,14 @@ if __name__ == "__main__":
 
     ndvi_mask_2d = create_ndvi_mask(
         ndvi,
-        threshold=0.35,
+        threshold=NDVI_MASK_THRESHOLD,
         y_mode=Y_REDUCTION_MODE,
         y=y_middle,
         band_half_height=Y_BAND_HALF_HEIGHT,
     )
 
-    print(f"Visualization Y reduction: {ndvi_label}")
+    print(f"Analysis Y reduction: {ndvi_label}")
+    mask_summary = summarize_mask_2d(ndvi_mask_2d, name=f"NDVI plant mask ({ndvi_label})")
 
     # Step 2: show NDVI and mask
     show_index_map(
@@ -414,13 +565,32 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.show()
 
-    # Step 6: summarize only plant pixels
-    summarize_masked_index(pri_masked, name=f"PRI masked ({ndvi_label})")
-    summarize_masked_index(cri_masked, name=f"CRI masked ({ndvi_label})")
-    summarize_masked_index(ndvi_masked, name=f"NDVI masked ({ndvi_label})")
+    # Step 6: thesis-facing quantitative outputs from the central-band masked maps
+    pri_summary = summarize_masked_index(pri_masked, name=f"PRI masked ({ndvi_label})")
+    cri_summary = summarize_masked_index(cri_masked, name=f"CRI masked ({ndvi_label})")
+    ndvi_summary = summarize_masked_index(ndvi_masked, name=f"NDVI masked ({ndvi_label})")
+
+    if APPEND_TO_MASTER_CSV:
+        update_master_summary_csv(
+            csv_path=MASTER_SUMMARY_CSV,
+            scan_folder=scan_folder,
+            y_label=ndvi_label,
+            mask_summary=mask_summary,
+            index_summaries={
+                "PRI": pri_summary,
+                "CRI": cri_summary,
+                "NDVI": ndvi_summary,
+            },
+            y_reduction_mode=Y_REDUCTION_MODE,
+            y_band_half_height=Y_BAND_HALF_HEIGHT,
+            ndvi_threshold=NDVI_MASK_THRESHOLD,
+            white_path=white_path,
+            dark_path=dark_path,
+            replace_existing_scan_row=REPLACE_EXISTING_SCAN_ROW,
+        )
     
     #Step 7: Visualise spectrum before and after Gaussian smoothing for one pixel
-    visualise_spectrum_before_after_gaussian(cube_reflectance, z=28, x=11, y=y_middle,)
+    visualise_spectrum_before_after_gaussian(cube_reflectance, z=24, x=17, y=y_middle,)
     visualise_spectrum_at(cube_reflectance, z=28, x=11, y=y_middle)
     #visualise_raw_image_spectrum(dark_path, flip_x=True)
     #visualise_raw_image_spectrum(white_path, flip_x=True)

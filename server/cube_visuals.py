@@ -244,8 +244,7 @@ def reconstruct_rgb_image(cube, out_path, y=None, y_range=None, aggregate="mean"
     g_idx = int(np.searchsorted(cube.wavs_nm, g_wavelength))
     b_idx = int(np.searchsorted(cube.wavs_nm, b_wavelength))
 
-    print(f"RGB wavelengths: R={cube.wavs_nm[r_idx]:.1f} nm, "
-          f"G={cube.wavs_nm[g_idx]:.1f} nm, B={cube.wavs_nm[b_idx]:.1f} nm")
+    #print(f"RGB wavelengths: R={cube.wavs_nm[r_idx]:.1f} nm, " f"G={cube.wavs_nm[g_idx]:.1f} nm, B={cube.wavs_nm[b_idx]:.1f} nm")
 
     # Extract channels from raw data: (Z, X, Y)
     r_channel = cube.data[:, :, :, r_idx]

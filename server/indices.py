@@ -96,7 +96,7 @@ def calculate_ndvi(cube, bandpass_nm=DEFAULT_BANDPASS_NM) -> np.ndarray:
     ndvi = (nir - red) / (nir + red + EPS)
     ndvi = ndvi.astype(np.float32)
 
-    print(f"NDVI mean = {np.nanmean(ndvi):.4f}")
+    # Whole-cube mean print disabled; thesis-facing summaries are handled in visualization.py.
     return ndvi
 
 
@@ -119,7 +119,7 @@ def calculate_cri(cube, bandpass_nm=DEFAULT_BANDPASS_NM) -> np.ndarray:
     mask = (p510 > EPS) & (p550 > EPS)
 
     cri[mask] = (1.0 / p510[mask]) - (1.0 / p550[mask])
-    print(f"CRI mean = {np.nanmean(cri):.4f}") # Global mean CRI value across the cube
+    # Whole-cube mean print disabled; thesis-facing summaries are handled in visualization.py.
     return cri
 
 
@@ -141,5 +141,5 @@ def calculate_pri(cube, bandpass_nm=DEFAULT_BANDPASS_NM) -> np.ndarray:
     pri = (p531 - p570) / (p531 + p570 + EPS)
     pri = pri.astype(np.float32)
 
-    print(f"PRI mean = {np.nanmean(pri):.4f}") # Global mean PRI value across the cube
+    # Whole-cube mean print disabled; thesis-facing summaries are handled in visualization.py.
     return pri
