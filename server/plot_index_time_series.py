@@ -14,9 +14,22 @@ import numpy as np
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DATA_DIR = os.path.join(BASE_DIR, "edge", "data")
-DEFAULT_CSV_PATH = os.path.join(DATA_DIR, "masked_index_time_series.csv")
+DEFAULT_CSV_PATH = os.path.join(DATA_DIR, "masked_index_time_seriesExp2Pos2.csv")
 DEFAULT_OUTPUT_DIR = os.path.join(DATA_DIR, "time_series_plots")
 DEFAULT_SCAN_YEAR = datetime.now().year
+
+TITLE_FONTSIZE = 18
+LABEL_FONTSIZE = 15
+TICK_FONTSIZE = 13
+LEGEND_FONTSIZE = 12
+
+INDEX_CONFIGS = [
+    ("ndvi", "NDVI", "tab:green"),
+    ("pri", "PRI", "tab:orange"),
+    ("cri", "CRI", "tab:blue"),
+    ("sipi", "SIPI", "tab:olive"),
+    ("psri", "PSRI", "tab:red"),
+]
 
 
 SCAN_NAME_PATTERN = re.compile(
@@ -88,12 +101,32 @@ def load_time_series_rows(csv_path, default_year=DEFAULT_SCAN_YEAR):
                 "ndvi_mean",
                 "ndvi_median",
                 "ndvi_std",
+                "sipi_valid_pixel_count",
+                "sipi_mean",
+                "sipi_median",
+                "sipi_std",
+                "psri_valid_pixel_count",
+                "psri_mean",
+                "psri_median",
+                "psri_std",
             ):
-                row[key] = float(row[key])
+                row[key] = parse_optional_float(row.get(key))
             rows.append(row)
 
     rows.sort(key=lambda row: row["scan_datetime"])
     return rows
+
+
+def parse_optional_float(value):
+    """
+    Convert a CSV cell to float, returning NaN for missing values.
+    """
+    if value is None:
+        return np.nan
+    value = str(value).strip()
+    if value == "":
+        return np.nan
+    return float(value)
 
 
 def build_series(rows, prefix):
@@ -112,9 +145,20 @@ def build_series(rows, prefix):
     }
 
 
+def has_index_data(rows, prefix):
+    """
+    Return True if at least one row contains finite data for this index.
+    """
+    mean_key = f"{prefix}_mean"
+    if not rows:
+        return False
+    return any(np.isfinite(row.get(mean_key, np.nan)) for row in rows)
+
+
 def style_time_axis(ax):
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%d %b\n%H:%M"))
     ax.grid(True, alpha=0.3)
+    ax.tick_params(axis="both", labelsize=TICK_FONTSIZE)
     for label in ax.get_xticklabels():
         label.set_rotation(0)
 
@@ -140,28 +184,26 @@ def plot_single_index(series, index_label, color, out_path):
         label="Mean ± std",
     )
 
-    ax.set_title(f"{index_label} over time")
-    ax.set_ylabel(index_label)
-    ax.set_xlabel("Scan time")
+    ax.set_title(f"{index_label} over time", fontsize=TITLE_FONTSIZE)
+    ax.set_ylabel(index_label, fontsize=LABEL_FONTSIZE)
+    ax.set_xlabel("Scan time", fontsize=LABEL_FONTSIZE)
     style_time_axis(ax)
-    ax.legend()
+    ax.legend(fontsize=LEGEND_FONTSIZE)
     fig.tight_layout()
     fig.savefig(out_path, dpi=200)
     plt.close(fig)
 
 
-def plot_overview(rows, out_path):
+def plot_overview(rows, out_path, active_configs):
     """
-    Save one figure with NDVI, PRI, and CRI as stacked time-series plots.
+    Save one figure with all available indices as stacked time-series plots.
     """
-    configs = [
-        ("ndvi", "NDVI", "tab:green"),
-        ("pri", "PRI", "tab:orange"),
-        ("cri", "CRI", "tab:blue"),
-    ]
+    fig_height = max(8, 2.8 * len(active_configs))
+    fig, axes = plt.subplots(nrows=len(active_configs), ncols=1, figsize=(12, fig_height), sharex=True)
+    if len(active_configs) == 1:
+        axes = [axes]
 
-    fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(12, 10), sharex=True)
-    for ax, (prefix, label, color) in zip(axes, configs):
+    for ax, (prefix, label, color) in zip(axes, active_configs):
         series = build_series(rows, prefix)
         times = series["times"]
         mean_values = series["mean"]
@@ -178,12 +220,12 @@ def plot_overview(rows, out_path):
             alpha=0.18,
             label="Mean ± std",
         )
-        ax.set_ylabel(label)
-        ax.set_title(f"{label} over time")
+        ax.set_ylabel(label, fontsize=LABEL_FONTSIZE)
+        ax.set_title(f"{label} over time", fontsize=TITLE_FONTSIZE)
         style_time_axis(ax)
-        ax.legend(loc="best")
+        ax.legend(loc="best", fontsize=LEGEND_FONTSIZE)
 
-    axes[-1].set_xlabel("Scan time")
+    axes[-1].set_xlabel("Scan time", fontsize=LABEL_FONTSIZE)
     fig.tight_layout()
     fig.savefig(out_path, dpi=200)
     plt.close(fig)
@@ -199,14 +241,14 @@ def plot_mask_support(rows, out_path):
     fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(10, 7), sharex=True)
 
     axes[0].plot(times, pixel_counts, "-", color="tab:red", linewidth=2.0)
-    axes[0].set_title("Plant mask size over time")
-    axes[0].set_ylabel("Plant pixels")
+    axes[0].set_title("Plant mask size over time", fontsize=TITLE_FONTSIZE)
+    axes[0].set_ylabel("Plant pixels", fontsize=LABEL_FONTSIZE)
     style_time_axis(axes[0])
 
     axes[1].plot(times, coverage, "-", color="tab:purple", linewidth=2.0)
-    axes[1].set_ylabel("Coverage (%)")
-    axes[1].set_xlabel("Scan time")
-    axes[1].set_title("Plant mask coverage over time")
+    axes[1].set_ylabel("Coverage (%)", fontsize=LABEL_FONTSIZE)
+    axes[1].set_xlabel("Scan time", fontsize=LABEL_FONTSIZE)
+    axes[1].set_title("Plant mask coverage over time", fontsize=TITLE_FONTSIZE)
     style_time_axis(axes[1])
 
     fig.tight_layout()
@@ -216,7 +258,7 @@ def plot_mask_support(rows, out_path):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Plot NDVI, PRI, and CRI time-series from the master masked-index CSV."
+        description="Plot time-series for all available indices from the master masked-index CSV."
     )
     parser.add_argument(
         "--csv-path",
@@ -242,25 +284,18 @@ def main():
 
     os.makedirs(args.output_dir, exist_ok=True)
 
-    plot_overview(rows, os.path.join(args.output_dir, "index_time_series_overview.png"))
-    plot_single_index(
-        build_series(rows, "ndvi"),
-        "NDVI",
-        "tab:green",
-        os.path.join(args.output_dir, "ndvi_time_series.png"),
-    )
-    plot_single_index(
-        build_series(rows, "pri"),
-        "PRI",
-        "tab:orange",
-        os.path.join(args.output_dir, "pri_time_series.png"),
-    )
-    plot_single_index(
-        build_series(rows, "cri"),
-        "CRI",
-        "tab:blue",
-        os.path.join(args.output_dir, "cri_time_series.png"),
-    )
+    active_configs = [config for config in INDEX_CONFIGS if has_index_data(rows, config[0])]
+    if not active_configs:
+        raise RuntimeError(f"No finite index data found in CSV: {args.csv_path}")
+
+    plot_overview(rows, os.path.join(args.output_dir, "index_time_series_overview.png"), active_configs)
+    for prefix, label, color in active_configs:
+        plot_single_index(
+            build_series(rows, prefix),
+            label,
+            color,
+            os.path.join(args.output_dir, f"{prefix}_time_series.png"),
+        )
     plot_mask_support(rows, os.path.join(args.output_dir, "mask_time_series.png"))
 
     print(f"Time-series plots saved to {args.output_dir}")

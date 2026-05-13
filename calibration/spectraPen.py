@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 import sys
 
-filename = "SpectraPenDataSameLocNoCamera.spec"  
+filename = "directlyUnderLight.spec"  
 #filename = sys.argv[1]   # f.eks SpectraPenData_450nmLC.spec
 
 with open(filename, "rb") as f:
@@ -137,8 +137,7 @@ plt.plot(wavelength, values)
 plt.xlabel("Wavelength (nm)")
 plt.ylabel("Intensity")
 
-plt.title("Spectrum, same location, but no camera")
-
+plt.title("Spectrum retrieved from position 2, no camera present")
 plt.show()
 
 

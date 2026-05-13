@@ -19,6 +19,8 @@ from indices import (
     calculate_ndvi,
     calculate_cri,
     calculate_pri,
+    calculate_sipi,
+    calculate_psri,
 )
 
 from Generate_cube import (
@@ -33,8 +35,31 @@ from radiometric_calibration import (
 #KFHSI
 BASE_DIR      = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DATA_DIR = os.path.join(BASE_DIR, "edge", "data")
+#Experiment 2
+#Pos 1: scan_04May_11:01:08
+#Pos 2: scan_04May_11:53:02
+#Pos 3: scan_04May_13:00:39
+#Pos 1: scan_05May_11:58:21
+#Pos 2: scan_05May_12:50:07
+#Pos 3: scan_05May_13:39:47
+#Pos 1: scan_06May_11:10:08
+#Pos 2: scan_06May_11:59:40
+#Pos 3: scan_06May_12:48:43
+#Pos 1: scan_07May_12:03:15
+#Pos 2: scan_07May_12:51:47
+#Pos 3: scan_07May_13:44:14
+#Pos 1: scan_08May_12:09:29
+#Pos 2: scan_08May_12:58:07
+#Pos 3: scan_08May_13:49:28
+#Pos 1: scan_09May_12:17:32
+#Pos 2: scan_09May_13:09:07
+#Pos 3: scan_09May_14:03:51
+#Pos 1: scan_11May_09:20:25
+#Pos 2: scan_11May_10:09:11
+#Pos 3: scan_11May_10:57:40
+#Pos 1: scan_12May_10:58:19
 
-scan_folder = os.path.join(DATA_DIR, "scan_30April_09:46:32")  # Choose one specific folder for now
+scan_folder = os.path.join(DATA_DIR, "scan_12May_12:45:45")  # Choose one specific folder for now
 npz_path = os.path.join(scan_folder, "cube_ZXnm_corrected.npz")
 
 data = np.load(npz_path)
@@ -52,7 +77,7 @@ Y_REDUCTION_MODE = "central_band_mean"
 Y_BAND_HALF_HEIGHT = 20
 NDVI_MASK_THRESHOLD = 0.35
 APPEND_TO_MASTER_CSV = True
-MASTER_SUMMARY_CSV = os.path.join(DATA_DIR, "masked_index_time_series.csv")
+MASTER_SUMMARY_CSV = os.path.join(DATA_DIR, "masked_index_time_seriesExp2Pos2.csv")
 REPLACE_EXISTING_SCAN_ROW = True
 
 
@@ -358,6 +383,14 @@ def update_master_summary_csv(
         "ndvi_mean",
         "ndvi_median",
         "ndvi_std",
+        "sipi_valid_pixel_count",
+        "sipi_mean",
+        "sipi_median",
+        "sipi_std",
+        "psri_valid_pixel_count",
+        "psri_mean",
+        "psri_median",
+        "psri_std",
     ]
 
     row = {
@@ -383,6 +416,14 @@ def update_master_summary_csv(
         "ndvi_mean": index_summaries["NDVI"]["mean"],
         "ndvi_median": index_summaries["NDVI"]["median"],
         "ndvi_std": index_summaries["NDVI"]["std"],
+        "sipi_valid_pixel_count": index_summaries["SIPI"]["valid_pixel_count"],
+        "sipi_mean": index_summaries["SIPI"]["mean"],
+        "sipi_median": index_summaries["SIPI"]["median"],
+        "sipi_std": index_summaries["SIPI"]["std"],
+        "psri_valid_pixel_count": index_summaries["PSRI"]["valid_pixel_count"],
+        "psri_mean": index_summaries["PSRI"]["mean"],
+        "psri_median": index_summaries["PSRI"]["median"],
+        "psri_std": index_summaries["PSRI"]["std"],
     }
 
     os.makedirs(os.path.dirname(csv_path), exist_ok=True)
@@ -451,6 +492,8 @@ if __name__ == "__main__":
     ndvi = calculate_ndvi(cube_reflectance)
     pri = calculate_pri(cube_reflectance)
     cri = calculate_cri(cube_reflectance)
+    sipi = calculate_sipi(cube_reflectance)
+    psri = calculate_psri(cube_reflectance)
     
     # Supplementary whole-cube summaries are left here commented out.
     # summarize_index_volume(ndvi, name="NDVI")
@@ -512,6 +555,18 @@ if __name__ == "__main__":
         y=y_middle,
         band_half_height=Y_BAND_HALF_HEIGHT,
     )
+    sipi_2d, _ = reduce_y_dimension(
+        sipi,
+        mode=Y_REDUCTION_MODE,
+        y=y_middle,
+        band_half_height=Y_BAND_HALF_HEIGHT,
+    )
+    psri_2d, _ = reduce_y_dimension(
+        psri,
+        mode=Y_REDUCTION_MODE,
+        y=y_middle,
+        band_half_height=Y_BAND_HALF_HEIGHT,
+    )
 
     ndvi_mask_2d = create_ndvi_mask(
         ndvi,
@@ -540,10 +595,12 @@ if __name__ == "__main__":
     # Step 3: overlay mask on RGB
     overlay_mask_on_rgb(rgb_image, ndvi_mask_2d)
 
-    # Step 4: apply mask to 2D slices of PRI and CRI
+    # Step 4: apply mask to 2D index maps
     pri_masked = apply_mask_to_index(pri_2d, ndvi_mask_2d)
     cri_masked = apply_mask_to_index(cri_2d, ndvi_mask_2d)
     ndvi_masked = apply_mask_to_index(ndvi_2d, ndvi_mask_2d)
+    sipi_masked = apply_mask_to_index(sipi_2d, ndvi_mask_2d)
+    psri_masked = apply_mask_to_index(psri_2d, ndvi_mask_2d)
   
 
     # Step 5: show masked maps
@@ -569,6 +626,8 @@ if __name__ == "__main__":
     pri_summary = summarize_masked_index(pri_masked, name=f"PRI masked ({ndvi_label})")
     cri_summary = summarize_masked_index(cri_masked, name=f"CRI masked ({ndvi_label})")
     ndvi_summary = summarize_masked_index(ndvi_masked, name=f"NDVI masked ({ndvi_label})")
+    sipi_summary = summarize_masked_index(sipi_masked, name=f"SIPI masked ({ndvi_label})")
+    psri_summary = summarize_masked_index(psri_masked, name=f"PSRI masked ({ndvi_label})")
 
     if APPEND_TO_MASTER_CSV:
         update_master_summary_csv(
@@ -580,6 +639,8 @@ if __name__ == "__main__":
                 "PRI": pri_summary,
                 "CRI": cri_summary,
                 "NDVI": ndvi_summary,
+                "SIPI": sipi_summary,
+                "PSRI": psri_summary,
             },
             y_reduction_mode=Y_REDUCTION_MODE,
             y_band_half_height=Y_BAND_HALF_HEIGHT,

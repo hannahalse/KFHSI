@@ -143,3 +143,31 @@ def calculate_pri(cube, bandpass_nm=DEFAULT_BANDPASS_NM) -> np.ndarray:
 
     # Whole-cube mean print disabled; thesis-facing summaries are handled in visualization.py.
     return pri
+
+
+def calculate_sipi(cube, bandpass_nm=DEFAULT_BANDPASS_NM) -> np.ndarray:
+    """
+    Calculate SIPI from a hyperspectral cube using bandpass-aware spectral averaging.
+
+    SIPI = (R800 - R445) / (R800 - R680)
+    """
+    r445 = _gaussian_weighted_band(cube, 445, bandpass_nm=bandpass_nm)
+    r680 = _gaussian_weighted_band(cube, 680, bandpass_nm=bandpass_nm)
+    r800 = _gaussian_weighted_band(cube, 800, bandpass_nm=bandpass_nm)
+
+    sipi = (r800 - r445) / (r800 - r680 + EPS)
+    return sipi.astype(np.float32)
+
+
+def calculate_psri(cube, bandpass_nm=DEFAULT_BANDPASS_NM) -> np.ndarray:
+    """
+    Calculate PSRI from a hyperspectral cube using bandpass-aware spectral averaging.
+
+    PSRI = (R678 - R500) / R750
+    """
+    r500 = _gaussian_weighted_band(cube, 500, bandpass_nm=bandpass_nm)
+    r678 = _gaussian_weighted_band(cube, 678, bandpass_nm=bandpass_nm)
+    r750 = _gaussian_weighted_band(cube, 750, bandpass_nm=bandpass_nm)
+
+    psri = (r678 - r500) / (r750 + EPS)
+    return psri.astype(np.float32)
