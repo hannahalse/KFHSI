@@ -40,6 +40,51 @@ def load_reference_image(image_path, flip_x=True):
 
     return image
 
+
+def load_mean_reference_image(image_dir, flip_x=True):
+    """
+    Load all PNG reference images from a directory, optionally flip them,
+    and return their pixelwise mean image.
+
+    Returns:
+        mean_image: float32 array with shape (Y, W)
+    """
+    if not os.path.isdir(image_dir):
+        raise RuntimeError(f"Reference directory does not exist: {image_dir}")
+
+    image_paths = sorted(
+        os.path.join(image_dir, name)
+        for name in os.listdir(image_dir)
+        if name.lower().endswith(".png")
+    )
+    if not image_paths:
+        raise RuntimeError(f"No PNG reference images found in directory: {image_dir}")
+
+    images = []
+    shape_ref = None
+    for image_path in image_paths:
+        image = load_reference_image(image_path, flip_x=flip_x)
+        if shape_ref is None:
+            shape_ref = image.shape
+        elif image.shape != shape_ref:
+            raise RuntimeError(
+                f"Reference image shape mismatch in {image_dir}: "
+                f"{image_path} has shape {image.shape}, expected {shape_ref}"
+            )
+        images.append(image)
+
+    mean_image = np.mean(np.stack(images, axis=0), axis=0).astype(np.float32)
+    return mean_image
+
+
+def load_reference_source(reference_source, flip_x=True):
+    """
+    Load either one reference image or the mean of all PNGs in a directory.
+    """
+    if os.path.isdir(reference_source):
+        return load_mean_reference_image(reference_source, flip_x=flip_x)
+    return load_reference_image(reference_source, flip_x=flip_x)
+
 def clip_reference_to_cube_wavelengths(reference_image, cube_wavs_nm):
     """
     Clip reference image in spectral direction so it matches cube wavelengths.
@@ -96,8 +141,8 @@ def radiometric_correct_cube(
     cube_data = cube.data.astype(np.float32)
     Zc, Xc, Yc, Wc = cube_data.shape
 
-    white_raw = load_reference_image(white_path, flip_x=flip_x)
-    dark_raw = load_reference_image(dark_path, flip_x=flip_x)
+    white_raw = load_reference_source(white_path, flip_x=flip_x)
+    dark_raw = load_reference_source(dark_path, flip_x=flip_x)
 
     white = clip_reference_to_cube_wavelengths(white_raw, cube.wavs_nm)
     dark = clip_reference_to_cube_wavelengths(dark_raw, cube.wavs_nm)
@@ -117,8 +162,8 @@ def radiometric_correct_cube(
 
     corrected_cube = CubeNM(corrected_data, cube.wavs_nm.copy())
 
-    print(f"[INFO] Using white reference: {white_path}")
-    print(f"[INFO] Using dark reference: {dark_path}")
+    print(f"[INFO] Using white reference source: {white_path}")
+    print(f"[INFO] Using dark reference source: {dark_path}")
     print(f"[INFO] Radiometric correction complete. Corrected cube shape: {corrected_cube.shape}")
     print(f"[INFO] Corrected cube min={np.nanmin(corrected_data):.4f}, max={np.nanmax(corrected_data):.4f}, mean={np.nanmean(corrected_data):.4f}")
 

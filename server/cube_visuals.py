@@ -9,6 +9,14 @@ from indices import DEFAULT_BANDPASS_NM, gaussian_smooth_spectrum
 
 A = 0.7241145833
 B = 288.45625
+#A = 0.35089774
+#B = 298.19491305
+
+TITLE_FONTSIZE = 20
+LABEL_FONTSIZE = 16
+TICK_FONTSIZE = 14
+LEGEND_FONTSIZE = 14
+COLORBAR_LABEL_FONTSIZE = 15
 
 
 def px_to_nm(px):
@@ -47,10 +55,14 @@ def visualise_spectrum_at(cube, z, x, y, bandpass_nm=DEFAULT_BANDPASS_NM):
         label=f"Z={z}, X={x}, Y-row={y}",
         color="tab:blue",
     )
-    plt.xlabel("Wavelength (nm)")
-    plt.ylabel("Intensity")
-    plt.title(f"Smoothed spectrum at position (Z={z}, X={x}, Y={y})")
-    plt.legend()
+    plt.xlabel("Wavelength (nm)", fontsize=LABEL_FONTSIZE)
+    plt.ylabel("Intensity", fontsize=LABEL_FONTSIZE)
+    #plt.title(f"Smoothed spectrum at position (Z={z}, X={x}, Y={y})")
+    plt.title("Typical spectrum from a green leaf pixel", fontsize=TITLE_FONTSIZE)
+    
+    plt.xticks(fontsize=TICK_FONTSIZE)
+    plt.yticks(fontsize=TICK_FONTSIZE)
+    plt.legend(fontsize=LEGEND_FONTSIZE)
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.show()
@@ -94,11 +106,14 @@ def visualise_raw_image_spectrum(image_path, flip_x=True, wl_min=380.0, wl_max=8
 
     plt.figure(figsize=(10, 6))
     plt.plot(wavs_nm, spectrum, color="tab:blue")
-    plt.xlabel("Wavelength (nm)")
-    plt.ylabel("Intensity (a.u.)")
+    plt.xlabel("Wavelength (nm)", fontsize=LABEL_FONTSIZE)
+    plt.ylabel("Intensity (a.u.)", fontsize=LABEL_FONTSIZE)
     plt.title(
-        f"Raw image spectrum: {os.path.basename(image_path)} ({wl_min:.0f}-{wl_max:.0f} nm)"
+        f"Raw image spectrum: {os.path.basename(image_path)} ({wl_min:.0f}-{wl_max:.0f} nm)",
+        fontsize=TITLE_FONTSIZE,
     )
+    plt.xticks(fontsize=TICK_FONTSIZE)
+    plt.yticks(fontsize=TICK_FONTSIZE)
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.show()
@@ -138,11 +153,14 @@ def visualise_white_dark_difference(
     if plot:
         plt.figure(figsize=(10, 6))
         plt.plot(wavs_nm, denominator, color="tab:green")
-        plt.xlabel("Wavelength (nm)")
-        plt.ylabel("White - dark (a.u.)")
+        plt.xlabel("Wavelength (nm)", fontsize=LABEL_FONTSIZE)
+        plt.ylabel("White - dark (a.u.)", fontsize=LABEL_FONTSIZE)
         plt.title(
-            f"Reference denominator: {os.path.basename(white_path)} - {os.path.basename(dark_path)}"
+            f"Reference denominator: {os.path.basename(white_path)} - {os.path.basename(dark_path)}",
+            fontsize=TITLE_FONTSIZE,
         )
+        plt.xticks(fontsize=TICK_FONTSIZE)
+        plt.yticks(fontsize=TICK_FONTSIZE)
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
         plt.show()
@@ -163,10 +181,12 @@ def visualise_spectrum_before_after_gaussian(cube, z, x, y, bandpass_nm=DEFAULT_
     plt.figure(figsize=(10, 6))
     plt.plot(cube.wavs_nm, raw_spectrum, label="Original spectrum", color="tab:blue", alpha=0.6,)
     plt.plot(cube.wavs_nm, smoothed_spectrum, label=f"Gaussian-smoothed ({bandpass_nm:.1f} nm FWHM)", color="tab:orange", linewidth=2.0,)
-    plt.xlabel("Wavelength (nm)")
-    plt.ylabel("Intensity")
-    plt.title(f"Spectrum at position (Z={z}, X={x}, Y={y})")
-    plt.legend()
+    plt.xlabel("Wavelength (nm)", fontsize=LABEL_FONTSIZE)
+    plt.ylabel("Intensity", fontsize=LABEL_FONTSIZE)
+    plt.title(f"Spectrum at position (Z={z}, X={x}, Y={y})", fontsize=TITLE_FONTSIZE)
+    plt.xticks(fontsize=TICK_FONTSIZE)
+    plt.yticks(fontsize=TICK_FONTSIZE)
+    plt.legend(fontsize=LEGEND_FONTSIZE)
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
 
@@ -208,10 +228,14 @@ def visualise_wavelength_slice(cube, wavelength_nm, out_path, y=None, aggregate=
     # Plot and save
     plt.figure(figsize=(8, 6))
     plt.imshow(img_n, cmap="gray", aspect="auto")
-    plt.xlabel("X position")
-    plt.ylabel("Z position")
-    plt.title(f"Slice at {float(wavelength_nm):.1f} nm")
-    plt.colorbar(label="Normalized intensity")
+    plt.xlabel("X position", fontsize=LABEL_FONTSIZE)
+    plt.ylabel("Z position", fontsize=LABEL_FONTSIZE)
+    plt.title(f"Slice at {float(wavelength_nm):.1f} nm", fontsize=TITLE_FONTSIZE)
+    plt.xticks(fontsize=TICK_FONTSIZE)
+    plt.yticks(fontsize=TICK_FONTSIZE)
+    cbar = plt.colorbar()
+    cbar.set_label("Normalized intensity", fontsize=COLORBAR_LABEL_FONTSIZE)
+    cbar.ax.tick_params(labelsize=TICK_FONTSIZE)
     plt.tight_layout()
     plt.savefig(out_path, dpi=200)
     plt.close()

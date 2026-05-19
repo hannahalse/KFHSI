@@ -4,8 +4,12 @@ import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 import sys
 
-filename = "directlyUnderLight.spec"  
+filename = "SpectraPenData_20Wbulb.spec"  
 #filename = sys.argv[1]   # f.eks SpectraPenData_450nmLC.spec
+
+TITLE_FONTSIZE = 18
+LABEL_FONTSIZE = 15
+TICK_FONTSIZE = 13
 
 with open(filename, "rb") as f:
     data = f.read()
@@ -129,15 +133,19 @@ print(f"{peak_wl[0]:.2f} nm  ({int(peak_val[0])} counts)")
 """
 
 # --- Plot ---
+plt.figure(figsize=(10, 6))
 plt.plot(wavelength, values)
 
 #Comment out if when no peaks. 
 #plt.plot(peak_wl, peak_val, "x")
 
-plt.xlabel("Wavelength (nm)")
-plt.ylabel("Intensity")
+plt.xlabel("Wavelength (nm)", fontsize=LABEL_FONTSIZE)
+plt.ylabel("Relative intensity (a.u.)", fontsize=LABEL_FONTSIZE)
+plt.xticks(fontsize=TICK_FONTSIZE)
+plt.yticks(fontsize=TICK_FONTSIZE)
 
-plt.title("Spectrum retrieved from position 2, no camera present")
+plt.title("20 W halogen light bulbs", fontsize=TITLE_FONTSIZE)
+plt.tight_layout()
 plt.show()
 
 

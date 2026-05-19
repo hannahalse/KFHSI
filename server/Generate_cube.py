@@ -287,7 +287,7 @@ def generate_cube(scan_folder):
 if __name__ == "__main__":
     #scan_folder = find_last_modified_folder()
     #Choosing one specific folder: 
-    scan_folder = os.path.join(BASE_DIR, "edge", "data", "scan_12May_12:45:45")
+    scan_folder = os.path.join(BASE_DIR, "edge", "data", "scan_15May_11:16:46")
     
     print("Using this scan folder:", scan_folder)
 

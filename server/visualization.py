@@ -58,15 +58,20 @@ DATA_DIR = os.path.join(BASE_DIR, "edge", "data")
 #Pos 2: scan_11May_10:09:11
 #Pos 3: scan_11May_10:57:40
 #Pos 1: scan_12May_10:58:19
+#Pos 2: scan_12May_12:45:45
+#Pos 3: scan_12May_13:36:09
+#Pos 1: scan_13May_10:07:42
+#Pos 2: scan_13May_10:56:34
+#Pos 3: scan_13May_11:46:46
 
-scan_folder = os.path.join(DATA_DIR, "scan_12May_12:45:45")  # Choose one specific folder for now
+scan_folder = os.path.join(DATA_DIR, "scan_04May_11:01:08")  # Choose one specific folder for now
 npz_path = os.path.join(scan_folder, "cube_ZXnm_corrected.npz")
 
 data = np.load(npz_path)
 cube = CubeNM(data["cube"], data["wavs_nm"])
 
-white_path = os.path.join(BASE_DIR, "server", "whiteReferenceInChamber10W.png")
-dark_path = os.path.join(BASE_DIR, "server", "darkReference.png")
+white_path = os.path.join(BASE_DIR, "calibration", "whiteReference")
+dark_path = os.path.join(BASE_DIR, "calibration", "darkReference")
 
 # How to collapse the Y dimension when making 2D maps/RGB views.
 # Options:
@@ -77,11 +82,19 @@ Y_REDUCTION_MODE = "central_band_mean"
 Y_BAND_HALF_HEIGHT = 20
 NDVI_MASK_THRESHOLD = 0.35
 APPEND_TO_MASTER_CSV = True
-MASTER_SUMMARY_CSV = os.path.join(DATA_DIR, "masked_index_time_seriesExp2Pos2.csv")
+MASTER_SUMMARY_CSV = os.path.join(DATA_DIR, "masked_index_time_seriesExp2Pos1.csv")
 REPLACE_EXISTING_SCAN_ROW = True
+
+TITLE_FONTSIZE = 20
+LABEL_FONTSIZE = 16
+TICK_FONTSIZE = 14
+COLORBAR_LABEL_FONTSIZE = 15
 
 
 # -------- Calibration --------
+
+#A = 0.35089774
+#B = 298.19491305
 A = 0.7241145833
 B = 288.45625
 
@@ -268,10 +281,14 @@ def show_index_map(index_data, name, y_mode="slice", y=None, band_half_height=20
 
     plt.figure(figsize=(8, 6))
     plt.imshow(index_map, cmap=cmap, vmin=vmin, vmax=vmax, aspect="auto")
-    plt.colorbar(label=name)
-    plt.title(f"{name} map ({y_label})")
-    plt.xlabel("X")
-    plt.ylabel("Z")
+    cbar = plt.colorbar()
+    cbar.set_label(name, fontsize=COLORBAR_LABEL_FONTSIZE)
+    cbar.ax.tick_params(labelsize=TICK_FONTSIZE)
+    plt.title(f"{name} map ({y_label})", fontsize=TITLE_FONTSIZE)
+    plt.xlabel("X", fontsize=LABEL_FONTSIZE)
+    plt.ylabel("Z", fontsize=LABEL_FONTSIZE)
+    plt.xticks(fontsize=TICK_FONTSIZE)
+    plt.yticks(fontsize=TICK_FONTSIZE)
     plt.tight_layout()
     plt.show()
 
@@ -453,9 +470,11 @@ def show_mask(mask_2d, title="Plant mask"):
     """
     plt.figure(figsize=(8, 6))
     plt.imshow(mask_2d, cmap="gray", aspect="auto")
-    plt.title(title)
-    plt.xlabel("X")
-    plt.ylabel("Z")
+    plt.title(title, fontsize=TITLE_FONTSIZE)
+    plt.xlabel("X", fontsize=LABEL_FONTSIZE)
+    plt.ylabel("Z", fontsize=LABEL_FONTSIZE)
+    plt.xticks(fontsize=TICK_FONTSIZE)
+    plt.yticks(fontsize=TICK_FONTSIZE)
     plt.tight_layout()
     plt.show()
 
@@ -478,9 +497,11 @@ def overlay_mask_on_rgb(rgb_image, mask_2d, alpha=0.35):
 
     plt.figure(figsize=(8, 6))
     plt.imshow(blended, aspect="auto")
-    plt.title("RGB with plant mask overlay")
-    plt.xlabel("X")
-    plt.ylabel("Z")
+    plt.title("RGB with plant mask overlay", fontsize=TITLE_FONTSIZE)
+    plt.xlabel("X", fontsize=LABEL_FONTSIZE)
+    plt.ylabel("Z", fontsize=LABEL_FONTSIZE)
+    plt.xticks(fontsize=TICK_FONTSIZE)
+    plt.yticks(fontsize=TICK_FONTSIZE)
     plt.tight_layout()
     plt.show()
 
@@ -606,19 +627,27 @@ if __name__ == "__main__":
     # Step 5: show masked maps
     plt.figure(figsize=(8, 6))
     plt.imshow(pri_masked, cmap="RdYlGn", vmin=-1, vmax=1, aspect="auto")
-    plt.colorbar(label="PRI")
-    plt.title(f"Masked PRI ({ndvi_label})")
-    plt.xlabel("X")
-    plt.ylabel("Z")
+    cbar = plt.colorbar()
+    cbar.set_label("PRI", fontsize=COLORBAR_LABEL_FONTSIZE)
+    cbar.ax.tick_params(labelsize=TICK_FONTSIZE)
+    plt.title(f"Masked PRI ({ndvi_label})", fontsize=TITLE_FONTSIZE)
+    plt.xlabel("X", fontsize=LABEL_FONTSIZE)
+    plt.ylabel("Z", fontsize=LABEL_FONTSIZE)
+    plt.xticks(fontsize=TICK_FONTSIZE)
+    plt.yticks(fontsize=TICK_FONTSIZE)
     plt.tight_layout()
     plt.show()
 
     plt.figure(figsize=(8, 6))
     plt.imshow(cri_masked, cmap="viridis", aspect="auto")
-    plt.colorbar(label="CRI")
-    plt.title(f"Masked CRI ({ndvi_label})")
-    plt.xlabel("X")
-    plt.ylabel("Z")
+    cbar = plt.colorbar()
+    cbar.set_label("CRI", fontsize=COLORBAR_LABEL_FONTSIZE)
+    cbar.ax.tick_params(labelsize=TICK_FONTSIZE)
+    plt.title(f"Masked CRI ({ndvi_label})", fontsize=TITLE_FONTSIZE)
+    plt.xlabel("X", fontsize=LABEL_FONTSIZE)
+    plt.ylabel("Z", fontsize=LABEL_FONTSIZE)
+    plt.xticks(fontsize=TICK_FONTSIZE)
+    plt.yticks(fontsize=TICK_FONTSIZE)
     plt.tight_layout()
     plt.show()
 
@@ -651,8 +680,13 @@ if __name__ == "__main__":
         )
     
     #Step 7: Visualise spectrum before and after Gaussian smoothing for one pixel
-    visualise_spectrum_before_after_gaussian(cube_reflectance, z=24, x=17, y=y_middle,)
+    visualise_spectrum_before_after_gaussian(cube_reflectance, z=28, x=11, y=y_middle,)
     visualise_spectrum_at(cube_reflectance, z=28, x=11, y=y_middle)
+    """To illustrate a high PRI pixel"""
+    #visualise_spectrum_before_after_gaussian(cube_reflectance, z=3, x=38, y=y_middle,)
+    #visualise_spectrum_at(cube_reflectance, z=3, x=38, y=y_middle)
+    
+    
     #visualise_raw_image_spectrum(dark_path, flip_x=True)
     #visualise_raw_image_spectrum(white_path, flip_x=True)
     #visualise_raw_image_spectrum(dark_path, flip_x=True)

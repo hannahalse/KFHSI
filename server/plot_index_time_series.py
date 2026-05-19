@@ -14,14 +14,14 @@ import numpy as np
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DATA_DIR = os.path.join(BASE_DIR, "edge", "data")
-DEFAULT_CSV_PATH = os.path.join(DATA_DIR, "masked_index_time_seriesExp2Pos2.csv")
+DEFAULT_CSV_PATH = os.path.join(DATA_DIR, "masked_index_time_seriesExp2Pos1.csv")
 DEFAULT_OUTPUT_DIR = os.path.join(DATA_DIR, "time_series_plots")
 DEFAULT_SCAN_YEAR = datetime.now().year
 
-TITLE_FONTSIZE = 18
-LABEL_FONTSIZE = 15
+TITLE_FONTSIZE = 23
+LABEL_FONTSIZE = 18
 TICK_FONTSIZE = 13
-LEGEND_FONTSIZE = 12
+LEGEND_FONTSIZE = 13
 
 INDEX_CONFIGS = [
     ("ndvi", "NDVI", "tab:green"),
@@ -30,6 +30,19 @@ INDEX_CONFIGS = [
     ("sipi", "SIPI", "tab:olive"),
     ("psri", "PSRI", "tab:red"),
 ]
+
+# Explicit scan exclusions for index-specific outliers.
+# These exclusions affect plotting only, not the underlying CSV values.
+EXCLUDED_SCANS_BY_INDEX = {
+    "sipi": {
+        #"scan_04May_11:53:02",
+        #"scan_12May_13:36:09",
+    },
+    "psri": {
+        #"scan_04May_11:53:02",
+        #"scan_12May_13:36:09",
+    },
+}
 
 
 SCAN_NAME_PATTERN = re.compile(
@@ -133,15 +146,18 @@ def build_series(rows, prefix):
     """
     Extract one index series from the loaded rows.
     """
+    excluded_scans = EXCLUDED_SCANS_BY_INDEX.get(prefix, set())
+    filtered_rows = [row for row in rows if row["scan_name"] not in excluded_scans]
+
     return {
-        "times": [row["scan_datetime"] for row in rows],
-        "scan_names": [row["scan_name"] for row in rows],
-        "mean": np.asarray([row[f"{prefix}_mean"] for row in rows], dtype=np.float32),
-        "median": np.asarray([row[f"{prefix}_median"] for row in rows], dtype=np.float32),
-        "std": np.asarray([row[f"{prefix}_std"] for row in rows], dtype=np.float32),
-        "valid_pixel_count": np.asarray([row[f"{prefix}_valid_pixel_count"] for row in rows], dtype=np.float32),
-        "mask_pixel_count": np.asarray([row["mask_pixel_count"] for row in rows], dtype=np.float32),
-        "mask_coverage_pct": np.asarray([row["mask_coverage_pct"] for row in rows], dtype=np.float32),
+        "times": [row["scan_datetime"] for row in filtered_rows],
+        "scan_names": [row["scan_name"] for row in filtered_rows],
+        "mean": np.asarray([row[f"{prefix}_mean"] for row in filtered_rows], dtype=np.float32),
+        "median": np.asarray([row[f"{prefix}_median"] for row in filtered_rows], dtype=np.float32),
+        "std": np.asarray([row[f"{prefix}_std"] for row in filtered_rows], dtype=np.float32),
+        "valid_pixel_count": np.asarray([row[f"{prefix}_valid_pixel_count"] for row in filtered_rows], dtype=np.float32),
+        "mask_pixel_count": np.asarray([row["mask_pixel_count"] for row in filtered_rows], dtype=np.float32),
+        "mask_coverage_pct": np.asarray([row["mask_coverage_pct"] for row in filtered_rows], dtype=np.float32),
     }
 
 
