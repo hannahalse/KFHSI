@@ -4,8 +4,11 @@ import numpy as np
 #anchor_px = [216.0, 504.0, 600.0]. From find_peak_pixel.py
 #anchor_nm = [445.48, 650.95, 724.77]. From spectraPen.py
 
+#Used in old results: 
 A = 0.7241145833
 B = 288.45625
+
+
 
 def px_to_nm(px):
     "Convert pixel index → wavelength (nm)"

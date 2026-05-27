@@ -1,5 +1,6 @@
 import argparse
 import csv
+import fnmatch
 import os
 import re
 from datetime import datetime
@@ -13,9 +14,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-DATA_DIR = os.path.join(BASE_DIR, "edge", "data")
-DEFAULT_CSV_PATH = os.path.join(DATA_DIR, "masked_index_time_seriesExp2Pos1.csv")
-DEFAULT_OUTPUT_DIR = os.path.join(DATA_DIR, "time_series_plots")
+DATA_ROOT = os.path.join(BASE_DIR, "edge", "data")
+DEFAULT_CSV_DIR = os.path.join(DATA_ROOT, "Experiment3")
+DEFAULT_CSV_PATTERN = "masked_index_time_series*.csv"
+DEFAULT_OUTPUT_DIR = os.path.join(DEFAULT_CSV_DIR, "time_series_plots")
 DEFAULT_SCAN_YEAR = datetime.now().year
 
 TITLE_FONTSIZE = 23
@@ -26,7 +28,8 @@ LEGEND_FONTSIZE = 13
 INDEX_CONFIGS = [
     ("ndvi", "NDVI", "tab:green"),
     ("pri", "PRI", "tab:orange"),
-    ("cri", "CRI", "tab:blue"),
+    ("cri1", "CRI1", "tab:blue"),
+    ("cri2", "CRI2", "tab:cyan"),
     ("sipi", "SIPI", "tab:olive"),
     ("psri", "PSRI", "tab:red"),
 ]
@@ -65,6 +68,58 @@ MONTH_MAP = {
 }
 
 
+def discover_csv_paths(csv_dir, pattern=DEFAULT_CSV_PATTERN):
+    """
+    Find all master time-series CSV files below csv_dir.
+    """
+    csv_dir = os.path.abspath(csv_dir)
+    if not os.path.isdir(csv_dir):
+        raise NotADirectoryError(f"CSV directory not found: {csv_dir}")
+
+    csv_paths = []
+    for current_root, dirnames, filenames in os.walk(csv_dir):
+        dirnames.sort()
+        for filename in sorted(filenames):
+            if fnmatch.fnmatch(filename, pattern):
+                csv_paths.append(os.path.join(current_root, filename))
+
+    if not csv_paths:
+        raise FileNotFoundError(f"No CSV files matching {pattern!r} found below {csv_dir}")
+    return csv_paths
+
+
+def build_scan_folder_lookup(scan_root):
+    """
+    Map scan folder names to real paths, including nested day folders.
+    """
+    scan_root = os.path.abspath(scan_root)
+    if not os.path.isdir(scan_root):
+        raise NotADirectoryError(f"Scan root not found: {scan_root}")
+
+    lookup = {}
+    for current_root, dirnames, _filenames in os.walk(scan_root):
+        dirnames.sort()
+        scan_dirnames = [dirname for dirname in dirnames if SCAN_NAME_PATTERN.match(dirname)]
+        for dirname in scan_dirnames:
+            lookup.setdefault(dirname, os.path.join(current_root, dirname))
+
+        # Scan folders contain many frames; do not descend into them while searching.
+        dirnames[:] = [dirname for dirname in dirnames if dirname not in scan_dirnames]
+    return lookup
+
+
+def resolve_scan_folder(row, scan_lookup):
+    """
+    Replace stale scan_folder values with the matching discovered scan_* path.
+    """
+    scan_folder = row.get("scan_folder", "")
+    if scan_folder and os.path.isdir(scan_folder):
+        return scan_folder
+
+    scan_name = row.get("scan_name", "")
+    return scan_lookup.get(scan_name, scan_folder)
+
+
 def parse_scan_datetime(scan_name, default_year=DEFAULT_SCAN_YEAR):
     """
     Parse scan names like scan_27April_15:26:44 into a datetime.
@@ -87,7 +142,7 @@ def parse_scan_datetime(scan_name, default_year=DEFAULT_SCAN_YEAR):
     )
 
 
-def load_time_series_rows(csv_path, default_year=DEFAULT_SCAN_YEAR):
+def load_time_series_rows(csv_path, default_year=DEFAULT_SCAN_YEAR, scan_lookup=None):
     """
     Load the master CSV and sort rows by scan timestamp.
     """
@@ -99,6 +154,8 @@ def load_time_series_rows(csv_path, default_year=DEFAULT_SCAN_YEAR):
         reader = csv.DictReader(f)
         for row in reader:
             row["scan_datetime"] = parse_scan_datetime(row["scan_name"], default_year=default_year)
+            if scan_lookup is not None and "scan_folder" in row:
+                row["scan_folder"] = resolve_scan_folder(row, scan_lookup)
             for key in (
                 "mask_pixel_count",
                 "mask_coverage_pct",
@@ -106,10 +163,14 @@ def load_time_series_rows(csv_path, default_year=DEFAULT_SCAN_YEAR):
                 "pri_mean",
                 "pri_median",
                 "pri_std",
-                "cri_valid_pixel_count",
-                "cri_mean",
-                "cri_median",
-                "cri_std",
+                "cri1_valid_pixel_count",
+                "cri1_mean",
+                "cri1_median",
+                "cri1_std",
+                "cri2_valid_pixel_count",
+                "cri2_mean",
+                "cri2_median",
+                "cri2_std",
                 "ndvi_valid_pixel_count",
                 "ndvi_mean",
                 "ndvi_median",
@@ -172,7 +233,7 @@ def has_index_data(rows, prefix):
 
 
 def style_time_axis(ax):
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%d %b\n%H:%M"))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%d %b"))
     ax.grid(True, alpha=0.3)
     ax.tick_params(axis="both", labelsize=TICK_FONTSIZE)
     for label in ax.get_xticklabels():
@@ -202,7 +263,7 @@ def plot_single_index(series, index_label, color, out_path):
 
     ax.set_title(f"{index_label} over time", fontsize=TITLE_FONTSIZE)
     ax.set_ylabel(index_label, fontsize=LABEL_FONTSIZE)
-    ax.set_xlabel("Scan time", fontsize=LABEL_FONTSIZE)
+    ax.set_xlabel("Scan date", fontsize=LABEL_FONTSIZE)
     style_time_axis(ax)
     ax.legend(fontsize=LEGEND_FONTSIZE)
     fig.tight_layout()
@@ -241,7 +302,7 @@ def plot_overview(rows, out_path, active_configs):
         style_time_axis(ax)
         ax.legend(loc="best", fontsize=LEGEND_FONTSIZE)
 
-    axes[-1].set_xlabel("Scan time", fontsize=LABEL_FONTSIZE)
+    axes[-1].set_xlabel("Scan date", fontsize=LABEL_FONTSIZE)
     fig.tight_layout()
     fig.savefig(out_path, dpi=200)
     plt.close(fig)
@@ -263,7 +324,7 @@ def plot_mask_support(rows, out_path):
 
     axes[1].plot(times, coverage, "-", color="tab:purple", linewidth=2.0)
     axes[1].set_ylabel("Coverage (%)", fontsize=LABEL_FONTSIZE)
-    axes[1].set_xlabel("Scan time", fontsize=LABEL_FONTSIZE)
+    axes[1].set_xlabel("Scan date", fontsize=LABEL_FONTSIZE)
     axes[1].set_title("Plant mask coverage over time", fontsize=TITLE_FONTSIZE)
     style_time_axis(axes[1])
 
@@ -272,19 +333,75 @@ def plot_mask_support(rows, out_path):
     plt.close(fig)
 
 
+def output_name_for_csv(csv_path):
+    """
+    Convert a CSV filename to a safe output subfolder name.
+    """
+    stem = os.path.splitext(os.path.basename(csv_path))[0]
+    name = re.sub(r"[^A-Za-z0-9_.-]+", "_", stem).strip("_")
+    return name or "time_series"
+
+
+def plot_time_series_csv(csv_path, output_dir, default_year=DEFAULT_SCAN_YEAR, scan_lookup=None):
+    """
+    Generate all time-series plots for one master CSV.
+    """
+    rows = load_time_series_rows(csv_path, default_year=default_year, scan_lookup=scan_lookup)
+    if not rows:
+        raise RuntimeError(f"No rows found in CSV: {csv_path}")
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    active_configs = [config for config in INDEX_CONFIGS if has_index_data(rows, config[0])]
+    if not active_configs:
+        raise RuntimeError(f"No finite index data found in CSV: {csv_path}")
+
+    plot_overview(rows, os.path.join(output_dir, "index_time_series_overview.png"), active_configs)
+    for prefix, label, color in active_configs:
+        plot_single_index(
+            build_series(rows, prefix),
+            label,
+            color,
+            os.path.join(output_dir, f"{prefix}_time_series.png"),
+        )
+    plot_mask_support(rows, os.path.join(output_dir, "mask_time_series.png"))
+
+    return {
+        "csv_path": csv_path,
+        "output_dir": output_dir,
+        "row_count": len(rows),
+        "index_count": len(active_configs),
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(
-        description="Plot time-series for all available indices from the master masked-index CSV."
+        description="Plot time-series for all available indices from masked-index CSV files."
     )
     parser.add_argument(
         "--csv-path",
-        default=DEFAULT_CSV_PATH,
-        help=f"Path to the master CSV (default: {DEFAULT_CSV_PATH})",
+        default=None,
+        help="Path to one master CSV. If omitted, all matching CSVs below --csv-dir are plotted.",
+    )
+    parser.add_argument(
+        "--csv-dir",
+        default=DEFAULT_CSV_DIR,
+        help=f"Directory searched for master CSVs (default: {DEFAULT_CSV_DIR})",
+    )
+    parser.add_argument(
+        "--csv-pattern",
+        default=DEFAULT_CSV_PATTERN,
+        help=f"Filename pattern used with --csv-dir (default: {DEFAULT_CSV_PATTERN})",
     )
     parser.add_argument(
         "--output-dir",
         default=DEFAULT_OUTPUT_DIR,
         help=f"Directory for saved plots (default: {DEFAULT_OUTPUT_DIR})",
+    )
+    parser.add_argument(
+        "--scan-root",
+        default=None,
+        help="Directory searched for scan_* folders (default: CSV directory or --csv-dir).",
     )
     parser.add_argument(
         "--year",
@@ -294,27 +411,33 @@ def main():
     )
     args = parser.parse_args()
 
-    rows = load_time_series_rows(args.csv_path, default_year=args.year)
-    if not rows:
-        raise RuntimeError(f"No rows found in CSV: {args.csv_path}")
+    if args.csv_path:
+        csv_paths = [os.path.abspath(args.csv_path)]
+        default_scan_root = os.path.dirname(csv_paths[0])
+    else:
+        csv_paths = discover_csv_paths(args.csv_dir, pattern=args.csv_pattern)
+        default_scan_root = args.csv_dir
 
-    os.makedirs(args.output_dir, exist_ok=True)
+    scan_root = args.scan_root or default_scan_root
+    scan_lookup = build_scan_folder_lookup(scan_root)
+    multiple_csvs = len(csv_paths) > 1
 
-    active_configs = [config for config in INDEX_CONFIGS if has_index_data(rows, config[0])]
-    if not active_configs:
-        raise RuntimeError(f"No finite index data found in CSV: {args.csv_path}")
-
-    plot_overview(rows, os.path.join(args.output_dir, "index_time_series_overview.png"), active_configs)
-    for prefix, label, color in active_configs:
-        plot_single_index(
-            build_series(rows, prefix),
-            label,
-            color,
-            os.path.join(args.output_dir, f"{prefix}_time_series.png"),
+    for csv_path in csv_paths:
+        output_dir = args.output_dir
+        if multiple_csvs:
+            output_dir = os.path.join(args.output_dir, output_name_for_csv(csv_path))
+        result = plot_time_series_csv(
+            csv_path,
+            output_dir,
+            default_year=args.year,
+            scan_lookup=scan_lookup,
         )
-    plot_mask_support(rows, os.path.join(args.output_dir, "mask_time_series.png"))
-
-    print(f"Time-series plots saved to {args.output_dir}")
+        print(
+            f"{os.path.basename(csv_path)}: "
+            f"{result['row_count']} row(s), "
+            f"{result['index_count']} index plot(s), "
+            f"saved to {result['output_dir']}"
+        )
 
 
 if __name__ == "__main__":

@@ -15,8 +15,11 @@ from cube_visuals import (
 #)
 
 #-------------TODO Cant seem to import this from calibration, so hardcoding here for now.----------------
+#Used in old results: 
 A = 0.7241145833
 B = 288.45625
+
+
 
 def px_to_nm(px):
     "Convert pixel index → wavelength (nm)"
@@ -34,7 +37,7 @@ wl_min = 380.0
 wl_max = 820.0
 SHIFT         = -5 
 BASE_DIR      = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-DATA_DIR      = os.path.join(BASE_DIR, "edge", "data")
+DATA_DIR      = os.path.join(BASE_DIR, "edge", "data", "Experiment3")  # Change to "Experiment" for all data
 FLIP_X = True  # Set to True if images need to be flipped horizontally
 
 # -------------------------------------------
@@ -276,18 +279,11 @@ def generate_cube(scan_folder):
 
     return cube, npz_path
 
-#Experiment 2
-#scan_04May_11:01:08
-#scan_04May_11:53:02
-#scan_04May_13:00:39
-#scan_05May_11:58:21
-#scan_05May_12:50:07
-#scan_05May_13:39:47
 
 if __name__ == "__main__":
     #scan_folder = find_last_modified_folder()
     #Choosing one specific folder: 
-    scan_folder = os.path.join(BASE_DIR, "edge", "data", "scan_15May_11:16:46")
+    scan_folder = os.path.join(BASE_DIR, "edge", "data", "Experiment1", "scan_29April_12:09:10")  # Change to desired scan folder
     
     print("Using this scan folder:", scan_folder)
 

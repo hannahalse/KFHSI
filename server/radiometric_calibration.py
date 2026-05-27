@@ -9,9 +9,11 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DEFAULT_WHITE_PATH = os.path.join(BASE_DIR, "server", "whiteReferenceInChamber10W.png")
 DEFAULT_DARK_PATH = os.path.join(BASE_DIR, "server", "darkReference1.png")
 
-# Samme kalibrering som i resten av prosjektet - Får ikke til å importere. 
+#Used in old results: 
 A = 0.7241145833
 B = 288.45625
+
+
 
 def px_to_nm(px):
     """Convert pixel index to wavelength (nm)."""

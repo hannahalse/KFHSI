@@ -7,10 +7,11 @@ import numpy as np
 from indices import DEFAULT_BANDPASS_NM, gaussian_smooth_spectrum
 
 
+#Used in old results: 
 A = 0.7241145833
 B = 288.45625
-#A = 0.35089774
-#B = 298.19491305
+
+
 
 TITLE_FONTSIZE = 20
 LABEL_FONTSIZE = 16
