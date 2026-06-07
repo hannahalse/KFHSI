@@ -10,11 +10,14 @@ matplotlib.use("Agg")
 
 from experiment_scan_groups import (
     DEFAULT_EXPERIMENT,
+    PLANT_SCANS_BY_EXPERIMENT,
     POSITION_SCANS_BY_EXPERIMENT,
+    discover_ordinal_scan_groups,
     discover_scan_names,
     experiment_dir,
     scan_folder_for_name,
     selected_position_keys,
+    sort_position_keys,
 )
 from visualization import process_scan
 
@@ -99,7 +102,7 @@ def parse_args():
     parser.add_argument(
         "--position",
         default="all",
-        help="Configured position key to process, or 'all' (default: all).",
+        help="Configured position/plant key to process, or 'all' (default: all).",
     )
     parser.add_argument(
         "--data-dir",
@@ -115,6 +118,19 @@ def parse_args():
         "--discover",
         action="store_true",
         help="Ignore configured positions and process every scan_* folder in the data directory into one CSV.",
+    )
+    parser.add_argument(
+        "--plant-groups",
+        action="store_true",
+        help=(
+            "Discover day*/scan_* folders and group them by scan order "
+            "as Plant1, Plant2, etc."
+        ),
+    )
+    parser.add_argument(
+        "--plant-list",
+        action="store_true",
+        help="Use manually configured plant groups from PLANT_SCANS_BY_EXPERIMENT.",
     )
     parser.add_argument(
         "--fresh",
@@ -146,6 +162,10 @@ def main():
 
     os.makedirs(output_dir, exist_ok=True)
 
+    grouping_modes = [args.discover, args.plant_groups, args.plant_list]
+    if sum(bool(mode) for mode in grouping_modes) > 1:
+        raise ValueError("Use only one of --discover, --plant-groups, or --plant-list.")
+
     if args.discover:
         csv_path = csv_path_for_group(output_dir, args.experiment, "All")
         run_scan_group(
@@ -158,6 +178,68 @@ def main():
             fresh=args.fresh,
             dry_run=args.dry_run,
         )
+        return
+
+    if args.plant_list:
+        plant_scans = PLANT_SCANS_BY_EXPERIMENT.get(args.experiment, {})
+        if not plant_scans:
+            raise ValueError(
+                f"No PLANT_SCANS_BY_EXPERIMENT entry defined for {args.experiment!r}."
+            )
+
+        if args.position == "all":
+            plants = sort_position_keys(plant_scans.keys())
+        else:
+            if args.position not in plant_scans:
+                available = ", ".join(sort_position_keys(plant_scans.keys()))
+                raise ValueError(
+                    f"Plant {args.position!r} is not defined for {args.experiment!r}. "
+                    f"Available plants: {available}"
+                )
+            plants = [args.position]
+
+        for plant in plants:
+            csv_path = csv_path_for_group(output_dir, args.experiment, f"Plant{plant}")
+            run_scan_group(
+                label=f"{args.experiment} plant {plant}",
+                scan_names=plant_scans[plant],
+                data_dir=data_dir,
+                csv_path=csv_path,
+                replace_existing_scan_row=not args.no_replace,
+                print_diagnostic=args.diagnostic,
+                fresh=args.fresh,
+                dry_run=args.dry_run,
+            )
+        return
+
+    if args.plant_groups:
+        plant_scans = discover_ordinal_scan_groups(data_dir)
+        if not plant_scans:
+            raise ValueError(f"No day*/scan_* groups found in {data_dir}")
+
+        if args.position == "all":
+            plants = sort_position_keys(plant_scans.keys())
+        else:
+            if args.position not in plant_scans:
+                available = ", ".join(sort_position_keys(plant_scans.keys()))
+                raise ValueError(
+                    f"Plant {args.position!r} is not available for {args.experiment!r}. "
+                    f"Available plants: {available}"
+                )
+            plants = [args.position]
+
+        for plant in plants:
+            csv_path = csv_path_for_group(output_dir, args.experiment, f"Plant{plant}")
+            run_scan_group(
+                label=f"{args.experiment} plant {plant}",
+                scan_names=plant_scans[plant],
+                data_dir=data_dir,
+                csv_path=csv_path,
+                replace_existing_scan_row=not args.no_replace,
+                print_diagnostic=args.diagnostic,
+                fresh=args.fresh,
+                dry_run=args.dry_run,
+            )
         return
 
     position_scans = POSITION_SCANS_BY_EXPERIMENT.get(args.experiment, {})

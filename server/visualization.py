@@ -36,8 +36,8 @@ from radiometric_calibration import (
 
 #KFHSI
 BASE_DIR      = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-DATA_DIR = os.path.join(BASE_DIR, "edge", "data", "Experiment1")  # Change to "Experiment" for all data
-MASTER_CSV = os.path.join(BASE_DIR, "edge", "data", "Experiment1")
+DATA_DIR = os.path.join(BASE_DIR, "edge", "data", "Experiment3", "day16")  # Change to "Experiment" for all data
+MASTER_CSV = os.path.join(BASE_DIR, "edge", "data", "Experiment3") 
 
 """#Experiment 2
 #Pos 1: scan_04May_11:01:08
@@ -81,10 +81,15 @@ MASTER_CSV = os.path.join(BASE_DIR, "edge", "data", "Experiment1")
 #Pos 1: scan_13May_10:07:42"""
 
 
+#scan_04June_08:42:18
+#scan_04June_09:58:07
+#scan_04June_10:55:04
+#scan_04June_11:51:11
+#scan_04June_12:47:06
 
 
 #Kjør med 28 for å få plantepixelfigur
-DEFAULT_SCAN_FOLDER = os.path.join(DATA_DIR, "scan_29April_12:09:10")  # Choose one specific folder for now
+DEFAULT_SCAN_FOLDER = os.path.join(DATA_DIR, "scan_06June_16:24:55")  # Choose one specific folder for now
 
 white_path = os.path.join(BASE_DIR, "calibration", "whiteReference")
 dark_path = os.path.join(BASE_DIR, "calibration", "darkReference")
@@ -99,14 +104,15 @@ Y_BAND_HALF_HEIGHT = 20
 # COMPARISON_BAND_HALF_HEIGHTS = (10, 20, 40, 60, 100)
 NDVI_MASK_THRESHOLD = 0.35
 REFERENCE_MAX_REFLECTANCE = 2.0
+#--------------CHANGE THIS TO ADD TO THE CSV FILE!!!!!!--------------
 APPEND_TO_MASTER_CSV = True
-MASTER_SUMMARY_CSV = os.path.join(MASTER_CSV, "masked_index_time_seriesExp1Pos3.csv")
+MASTER_SUMMARY_CSV = os.path.join(MASTER_CSV, "masked_index_time_seriesExp3Plant5.csv")
 REPLACE_EXISTING_SCAN_ROW = True
 
-TITLE_FONTSIZE = 20
-LABEL_FONTSIZE = 16
-TICK_FONTSIZE = 14
-COLORBAR_LABEL_FONTSIZE = 15
+TITLE_FONTSIZE = 26
+LABEL_FONTSIZE = 22
+TICK_FONTSIZE = 18
+COLORBAR_LABEL_FONTSIZE = 18
 
 
 # -------- Calibration --------
@@ -839,6 +845,8 @@ def process_scan(
         show_masked_index_map(pri_masked, "PRI", ndvi_label, cmap="RdYlGn", vmin=-1, vmax=1)
         show_masked_index_map(cri1_masked, "CRI1", ndvi_label)
         show_masked_index_map(cri2_masked, "CRI2", ndvi_label)
+        show_masked_index_map(sipi_masked, "SIPI", ndvi_label)
+        show_masked_index_map(psri_masked, "PSRI", ndvi_label)
 
     pri_summary = summarize_masked_index(pri_masked, name=f"PRI masked ({ndvi_label})")
     cri1_summary = summarize_masked_index(cri1_masked, name=f"CRI1 masked ({ndvi_label})")
