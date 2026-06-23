@@ -15,7 +15,7 @@ import numpy as np
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DATA_ROOT = os.path.join(BASE_DIR, "edge", "data")
-DEFAULT_CSV_DIR = os.path.join(DATA_ROOT, "Experiment3")
+DEFAULT_CSV_DIR = os.path.join(DATA_ROOT, "Experiment1")
 DEFAULT_CSV_PATTERN = "masked_index_time_series*.csv"
 DEFAULT_OUTPUT_DIR = os.path.join(DEFAULT_CSV_DIR, "time_series_plots")
 DEFAULT_SCAN_YEAR = datetime.now().year
@@ -261,7 +261,6 @@ def plot_single_index(series, index_label, color, out_path):
         label="Mean ± std",
     )
 
-    ax.set_title(f"{index_label} over time", fontsize=TITLE_FONTSIZE)
     ax.set_ylabel(index_label, fontsize=LABEL_FONTSIZE)
     ax.set_xlabel("Scan date", fontsize=LABEL_FONTSIZE)
     style_time_axis(ax)
@@ -298,7 +297,6 @@ def plot_overview(rows, out_path, active_configs):
             label="Mean ± std",
         )
         ax.set_ylabel(label, fontsize=LABEL_FONTSIZE)
-        ax.set_title(f"{label} over time", fontsize=TITLE_FONTSIZE)
         style_time_axis(ax)
         ax.legend(loc="best", fontsize=LEGEND_FONTSIZE)
 
@@ -318,14 +316,12 @@ def plot_mask_support(rows, out_path):
     fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(10, 7), sharex=True)
 
     axes[0].plot(times, pixel_counts, "-", color="tab:red", linewidth=2.0)
-    axes[0].set_title("Plant mask size over time", fontsize=TITLE_FONTSIZE)
     axes[0].set_ylabel("Plant pixels", fontsize=LABEL_FONTSIZE)
     style_time_axis(axes[0])
 
     axes[1].plot(times, coverage, "-", color="tab:purple", linewidth=2.0)
     axes[1].set_ylabel("Coverage (%)", fontsize=LABEL_FONTSIZE)
     axes[1].set_xlabel("Scan date", fontsize=LABEL_FONTSIZE)
-    axes[1].set_title("Plant mask coverage over time", fontsize=TITLE_FONTSIZE)
     style_time_axis(axes[1])
 
     fig.tight_layout()

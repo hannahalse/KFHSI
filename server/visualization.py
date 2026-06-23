@@ -36,7 +36,7 @@ from radiometric_calibration import (
 
 #KFHSI
 BASE_DIR      = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-DATA_DIR = os.path.join(BASE_DIR, "edge", "data", "Experiment3", "day16")  # Change to "Experiment" for all data
+DATA_DIR = os.path.join(BASE_DIR, "edge", "data", "Experiment3", "day6")  # Change to "Experiment" for all data
 MASTER_CSV = os.path.join(BASE_DIR, "edge", "data", "Experiment3") 
 
 """#Experiment 2
@@ -89,7 +89,7 @@ MASTER_CSV = os.path.join(BASE_DIR, "edge", "data", "Experiment3")
 
 
 #Kjør med 28 for å få plantepixelfigur
-DEFAULT_SCAN_FOLDER = os.path.join(DATA_DIR, "scan_06June_16:24:55")  # Choose one specific folder for now
+DEFAULT_SCAN_FOLDER = os.path.join(DATA_DIR, "scan_27May_08:42:56")  # Choose one specific folder for now
 
 white_path = os.path.join(BASE_DIR, "calibration", "whiteReference")
 dark_path = os.path.join(BASE_DIR, "calibration", "darkReference")
@@ -102,12 +102,12 @@ dark_path = os.path.join(BASE_DIR, "calibration", "darkReference")
 Y_REDUCTION_MODE = "central_band_mean"
 Y_BAND_HALF_HEIGHT = 20
 # COMPARISON_BAND_HALF_HEIGHTS = (10, 20, 40, 60, 100)
-NDVI_MASK_THRESHOLD = 0.35
+NDVI_MASK_THRESHOLD = 0.03
 REFERENCE_MAX_REFLECTANCE = 2.0
 #--------------CHANGE THIS TO ADD TO THE CSV FILE!!!!!!--------------
-APPEND_TO_MASTER_CSV = True
+APPEND_TO_MASTER_CSV = False
 MASTER_SUMMARY_CSV = os.path.join(MASTER_CSV, "masked_index_time_seriesExp3Plant5.csv")
-REPLACE_EXISTING_SCAN_ROW = True
+REPLACE_EXISTING_SCAN_ROW = False
 
 TITLE_FONTSIZE = 26
 LABEL_FONTSIZE = 22
@@ -165,7 +165,6 @@ def extract_spectrum_from_raw(image_path, flip_x=True, plot=True):
         plt.plot(wavs_nm, spectrum)
         plt.xlabel("Wavelength (nm)")
         plt.ylabel("Intensity (a.u.)")
-        plt.title("Extracted spectrum from {}".format(os.path.basename(image_path)))
         plt.show()
 
     return wavs_nm, spectrum
@@ -305,7 +304,6 @@ def show_index_map(index_data, name, y_mode="slice", y=None, band_half_height=20
     cbar = plt.colorbar()
     cbar.set_label(name, fontsize=COLORBAR_LABEL_FONTSIZE)
     cbar.ax.tick_params(labelsize=TICK_FONTSIZE)
-    plt.title(f"{name} map ({y_label})", fontsize=TITLE_FONTSIZE)
     plt.xlabel("X", fontsize=LABEL_FONTSIZE)
     plt.ylabel("Z", fontsize=LABEL_FONTSIZE)
     plt.xticks(fontsize=TICK_FONTSIZE)
@@ -638,7 +636,6 @@ def show_mask(mask_2d, title="Plant mask"):
     """
     plt.figure(figsize=(8, 6))
     plt.imshow(mask_2d, cmap="gray", aspect="auto")
-    plt.title(title, fontsize=TITLE_FONTSIZE)
     plt.xlabel("X", fontsize=LABEL_FONTSIZE)
     plt.ylabel("Z", fontsize=LABEL_FONTSIZE)
     plt.xticks(fontsize=TICK_FONTSIZE)
@@ -665,7 +662,6 @@ def overlay_mask_on_rgb(rgb_image, mask_2d, alpha=0.35):
 
     plt.figure(figsize=(8, 6))
     plt.imshow(blended, aspect="auto")
-    plt.title("RGB with plant mask overlay", fontsize=TITLE_FONTSIZE)
     plt.xlabel("X", fontsize=LABEL_FONTSIZE)
     plt.ylabel("Z", fontsize=LABEL_FONTSIZE)
     plt.xticks(fontsize=TICK_FONTSIZE)
@@ -687,7 +683,6 @@ def show_masked_index_map(index_map, name, y_label, cmap="viridis", vmin=None, v
     cbar = plt.colorbar()
     cbar.set_label(name, fontsize=COLORBAR_LABEL_FONTSIZE)
     cbar.ax.tick_params(labelsize=TICK_FONTSIZE)
-    plt.title(f"Masked {name} ({y_label})", fontsize=TITLE_FONTSIZE)
     plt.xlabel("X", fontsize=LABEL_FONTSIZE)
     plt.ylabel("Z", fontsize=LABEL_FONTSIZE)
     plt.xticks(fontsize=TICK_FONTSIZE)

@@ -42,7 +42,7 @@ from plot_index_time_series import (
 DEFAULT_EXPERIMENT = "Experiment3"
 EXPERIMENT_PRESETS = {
     "Experiment1": {
-        "csv_pattern": "masked_index_time_seriesExp1Pos*.csv",
+        "csv_pattern": "masked_index_time_seriesExp1Pos[1-3].csv",
         "group_label": "Position",
         "file_token": "positions",
         "output_suffix": "all_position_mean_comparison",
@@ -50,7 +50,7 @@ EXPERIMENT_PRESETS = {
         "control_groups": "3",
     },
     "Experiment2": {
-        "csv_pattern": "masked_index_time_seriesExp2Pos*.csv",
+        "csv_pattern": "masked_index_time_seriesExp2Pos[1-3].csv",
         "group_label": "Position",
         "file_token": "positions",
         "output_suffix": "all_position_mean_comparison",
@@ -58,7 +58,7 @@ EXPERIMENT_PRESETS = {
         "control_groups": "3",
     },
     "Experiment3": {
-        "csv_pattern": "masked_index_time_seriesExp3Plant*.csv",
+        "csv_pattern": "masked_index_time_seriesExp3Plant[1-5].csv",
         "group_label": "Plant",
         "file_token": "plants",
         "output_suffix": "all_plant_mean_comparison",
@@ -183,7 +183,6 @@ def plot_index_for_all_groups(
             **style,
         )
 
-    ax.set_title(f"{index_label} mean by {group_label.lower()}", fontsize=TITLE_FONTSIZE)
     ax.set_ylabel(f"{index_label} mean", fontsize=LABEL_FONTSIZE)
     ax.set_xlabel("Scan date", fontsize=LABEL_FONTSIZE)
     style_time_axis(ax)
@@ -222,10 +221,9 @@ def plot_overview_for_all_groups(
                 series["mean"],
                 label=f"{group_label} {group_number} ({treatment})",
                 **style,
-            )
+        )
 
         ax.set_ylabel(index_label, fontsize=LABEL_FONTSIZE)
-        ax.set_title(f"{index_label} mean", fontsize=TITLE_FONTSIZE)
         style_time_axis(ax)
 
     axes[0].legend(fontsize=LEGEND_FONTSIZE, ncols=2)

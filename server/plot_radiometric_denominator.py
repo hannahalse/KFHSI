@@ -14,10 +14,9 @@ WL_MIN = 380.0
 WL_MAX = 820.0
 EPS = 1e-6
 
-TITLE_FONTSIZE = 20
-LABEL_FONTSIZE = 16
-TICK_FONTSIZE = 14
-LEGEND_FONTSIZE = 14
+LABEL_FONTSIZE = 20
+TICK_FONTSIZE = 18
+LEGEND_FONTSIZE = 20
 
 
 def mean_reference_spectrum(reference_source, flip_x=True, wl_min=WL_MIN, wl_max=WL_MAX):
@@ -75,7 +74,6 @@ def plot_denominator(wavs_nm, denominator, white_source, dark_source, out_path=N
 
     axes[0].plot(wavs_nm, denominator, color="tab:green", linewidth=2.0, label="White - dark")
     axes[0].set_ylabel("Denominator (a.u.)", fontsize=LABEL_FONTSIZE)
-    axes[0].set_title("Radiometric denominator used in visualization.py", fontsize=TITLE_FONTSIZE)
     axes[0].tick_params(axis="both", labelsize=TICK_FONTSIZE)
     axes[0].grid(True, alpha=0.3)
     axes[0].legend(fontsize=LEGEND_FONTSIZE)
@@ -83,7 +81,6 @@ def plot_denominator(wavs_nm, denominator, white_source, dark_source, out_path=N
     axes[1].plot(wavs_nm, inverse_denominator, color="tab:red", linewidth=2.0, label="1 / (white - dark)")
     axes[1].set_xlabel("Wavelength (nm)", fontsize=LABEL_FONTSIZE)
     axes[1].set_ylabel("Inverse denominator", fontsize=LABEL_FONTSIZE)
-    axes[1].set_title("Inverse white-reference response", fontsize=TITLE_FONTSIZE)
     axes[1].tick_params(axis="both", labelsize=TICK_FONTSIZE)
     axes[1].grid(True, alpha=0.3)
     axes[1].legend(fontsize=LEGEND_FONTSIZE)
